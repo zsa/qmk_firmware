@@ -208,11 +208,6 @@ layer_state_t layer_state_set_kb(layer_state_t state) {
     if(led_state.caps_lock) {
         LED_6 = true;
     }
-    else {
-        if(layer != 3 && layer != 6) {
-            LED_6 = false;
-        }
-    }
 #endif
 
     ML_LED_1(LED_1);
