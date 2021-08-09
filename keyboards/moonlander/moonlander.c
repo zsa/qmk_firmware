@@ -137,7 +137,7 @@ void moonlander_led_task(void) {
         }
         else {
             uint8_t layer = get_highest_layer(layer_state);
-            if(layer != 1) {
+            if(layer != 3 && layer != 6) {
                 ML_LED_6(false);
             }
         }
