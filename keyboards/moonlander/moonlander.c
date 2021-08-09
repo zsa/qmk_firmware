@@ -129,18 +129,9 @@ void moonlander_led_task(void) {
         wait_ms(150);
     }
 #endif
-#ifdef CAPS_LOCK_STATUS
+#if !defined(MOONLANDER_USER_LEDS) && defined(CAPS_LOCK_STATUS)
     else {
-        led_t led_state = host_keyboard_led_state();
-        if(led_state.caps_lock) {
-            ML_LED_6(true);
-        }
-        else {
-            uint8_t layer = get_highest_layer(layer_state);
-            if(layer != 3 && layer != 6) {
-                ML_LED_6(false);
-            }
-        }
+        layer_state_set_kb(layer_state);
     }
 #endif
 }
@@ -178,40 +169,58 @@ void keyboard_pre_init_kb(void) {
 layer_state_t layer_state_set_kb(layer_state_t state) {
     state = layer_state_set_user(state);
     if (is_launching || !keyboard_config.led_level) return state;
-
-    ML_LED_1(false);
-    ML_LED_2(false);
-    ML_LED_3(false);
-    ML_LED_4(false);
-    ML_LED_5(false);
-    ML_LED_6(false);
-
+    bool LED_1 = false;
+    bool LED_2 = false;
+    bool LED_3 = false;
+    bool LED_4 = false;
+    bool LED_5 = false;
+    bool LED_6 = false;
+    
     uint8_t layer = get_highest_layer(state);
     switch (layer) {
         case 1:
-            ML_LED_1(1);
-            ML_LED_4(1);
+            LED_1 = true;
+            LED_4 = true;
             break;
         case 2:
-            ML_LED_2(1);
-            ML_LED_5(1);
+            LED_2 = true;
+            LED_5 = true;
             break;
         case 3:
-            ML_LED_3(1);
-            ML_LED_6(1);
+            LED_3 = true;
+            LED_6 = true;
             break;
         case 4:
-            ML_LED_4(1);
+            LED_4 = true;
             break;
         case 5:
-            ML_LED_5(1);
+            LED_5 = true;
             break;
         case 6:
-            ML_LED_6(1);
+            LED_6 = true;
             break;
         default:
             break;
     }
+
+#ifdef CAPS_LOCK_STATUS
+    led_t led_state = host_keyboard_led_state();
+    if(led_state.caps_lock) {
+        LED_6 = true;
+    }
+    else {
+        if(layer != 3 && layer != 6) {
+            LED_6 = false;
+        }
+    }
+#endif
+
+    ML_LED_1(LED_1);
+    ML_LED_2(LED_2);
+    ML_LED_3(LED_3);
+    ML_LED_4(LED_4);
+    ML_LED_5(LED_5);
+    ML_LED_6(LED_6);
 
     return state;
 }
