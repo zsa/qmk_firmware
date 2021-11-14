@@ -190,23 +190,147 @@ layer_state_t layer_state_set_kb(layer_state_t state) {
     switch (layer) {
         case 1:
             ML_LED_1(1);
-            ML_LED_4(1);
             break;
         case 2:
             ML_LED_2(1);
-            ML_LED_5(1);
             break;
         case 3:
-            ML_LED_3(1);
-            ML_LED_6(1);
+            ML_LED_1(1);
+            ML_LED_2(1);
             break;
         case 4:
-            ML_LED_4(1);
+            ML_LED_3(1);
             break;
         case 5:
-            ML_LED_5(1);
+            ML_LED_1(1);
+            ML_LED_3(1);
             break;
         case 6:
+            ML_LED_2(1);
+            ML_LED_3(1);
+            break;
+        case 7:
+            ML_LED_1(1);
+            ML_LED_2(1);
+            ML_LED_3(1);
+            break;
+        case 8:
+            ML_LED_4(1);
+            break;
+        case 9:
+            ML_LED_1(1);
+            ML_LED_4(1);
+            break;
+        case 10:
+            ML_LED_2(1);
+            ML_LED_4(1);
+            break;
+        case 11:
+            ML_LED_1(1);
+            ML_LED_2(1);
+            ML_LED_4(1);
+            break;
+        case 12:
+            ML_LED_3(1);
+            ML_LED_4(1);
+            break;
+        case 13:
+            ML_LED_1(1);
+            ML_LED_3(1);
+            ML_LED_4(1);
+            break;
+        case 14:
+            ML_LED_2(1);
+            ML_LED_3(1);
+            ML_LED_4(1);
+            break;
+        case 15:
+            ML_LED_1(1);
+            ML_LED_2(1);
+            ML_LED_3(1);
+            ML_LED_4(1);
+            break;
+        case 16:
+            ML_LED_5(1);
+            break;
+        case 17:
+            ML_LED_1(1);
+            ML_LED_5(1);
+            break;
+        case 18:
+            ML_LED_2(1);
+            ML_LED_5(1);
+            break;
+        case 19:
+            ML_LED_1(1);
+            ML_LED_2(1);
+            ML_LED_5(1);
+            break;
+        case 20:
+            ML_LED_3(1);
+            ML_LED_5(1);
+            break;
+        case 21:
+            ML_LED_1(1);
+            ML_LED_3(1);
+            ML_LED_5(1);
+            break;
+        case 22:
+            ML_LED_2(1);
+            ML_LED_3(1);
+            ML_LED_5(1);
+            break;
+        case 23:
+            ML_LED_1(1);
+            ML_LED_2(1);
+            ML_LED_3(1);
+            ML_LED_5(1);
+            break;
+        case 24:
+            ML_LED_4(1);
+            ML_LED_5(1);
+            break;
+        case 25:
+            ML_LED_1(1);
+            ML_LED_4(1);
+            ML_LED_5(1);
+            break;
+        case 26:
+            ML_LED_2(1);
+            ML_LED_4(1);
+            ML_LED_5(1);
+            break;
+        case 27:
+            ML_LED_1(1);
+            ML_LED_2(1);
+            ML_LED_4(1);
+            ML_LED_5(1);
+            break;
+        case 28:
+            ML_LED_3(1);
+            ML_LED_4(1);
+            ML_LED_5(1);
+            break;
+        case 29:
+            ML_LED_1(1);
+            ML_LED_3(1);
+            ML_LED_4(1);
+            ML_LED_5(1);
+            break;
+        case 30:
+            ML_LED_2(1);
+            ML_LED_3(1);
+            ML_LED_4(1);
+            ML_LED_5(1);
+            break;
+        case 31:
+            ML_LED_1(1);
+            ML_LED_2(1);
+            ML_LED_3(1);
+            ML_LED_4(1);
+            ML_LED_5(1);
+            break;
+        case 32:
             ML_LED_6(1);
             break;
         default:
