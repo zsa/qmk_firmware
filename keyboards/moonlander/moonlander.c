@@ -188,7 +188,9 @@ layer_state_t layer_state_set_kb(layer_state_t state) {
             break;
         case 3:
             LED_3 = true;
+#if !defined(CAPS_LOCK_STATUS)
             LED_6 = true;
+#endif
             break;
         case 4:
             LED_4 = true;
