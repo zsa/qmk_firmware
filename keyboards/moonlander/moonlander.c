@@ -212,7 +212,9 @@ layer_state_t layer_state_set_kb(layer_state_t state) {
     ML_LED_3(LED_3);
     ML_LED_4(LED_4);
     ML_LED_5(LED_5);
+#if !defined(CAPS_LOCK_STATUS)
     ML_LED_6(LED_6);
+#endif
 
     return state;
 }
