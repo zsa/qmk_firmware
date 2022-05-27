@@ -1,6 +1,5 @@
 #include "oryx.h"
 #include "eeprom.h"
-#include "print.h"
 
 rawhid_state_t rawhid_state = {.pairing = false, .paired = false};
 
@@ -14,10 +13,26 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
     uint8_t  cmd_index = 0;
 
     switch (command) {
+        case ORYX_CMD_GET_FW_VERSION: {
+            uint8_t event[RAW_EPSIZE];
+            uint8_t fw_version_size = sizeof(FIRMWARE_VERSION);
+            uint8_t stop[1];
+
+            event[0] = ORYX_EVT_GET_FW_VERSION;
+            stop[0]  = ORYX_STOP_BIT;
+
+            memcpy(event + 1, FIRMWARE_VERSION, fw_version_size);
+            memcpy(event + fw_version_size, stop, 1);
+
+            raw_hid_send(event, RAW_EPSIZE);
+            break;
+        }
+
         case ORYX_CMD_PAIRING_INIT:
             pairing_init_handler();
             store_pairing_sequence(&keyboard_pairing_sequence[0]);
             break;
+
         case ORYX_CMD_PAIRING_VALIDATE:
             for (uint8_t i = 0; i < PAIRING_SEQUENCE_SIZE; i++) {
                 keypos_t pos;
@@ -36,15 +51,6 @@ bool store_pairing_sequence(keypos_t *pairing_sequence) {
     eeprom_read_block(&stored_sequences, (uint8_t *)EECONFIG_SIZE, PAIRING_STORAGE_SIZE);
 
     uint8_t shiftLen = sizeof(&pairing_sequence);
-    uprintf("storage size %u\n", PAIRING_STORAGE_SIZE);
-    uprintf("shift size %u\n", shiftLen);
-
-    // dumping before
-    uprintf("Dumping pairing eeprom storage\n");
-    for (uint8_t i = 0; i < PAIRING_STORAGE_SIZE; i++) {
-        uprintf("%u ", stored_sequences[i]);
-    }
-    uprintf("\nEnd of Dumping pairing eeprom storage\n");
 
     for (int8_t i = PAIRING_STORAGE_SIZE; i >= 0; i--) {
         if (i > shiftLen) {
@@ -53,13 +59,6 @@ bool store_pairing_sequence(keypos_t *pairing_sequence) {
             stored_sequences[i] = 0;
         }
     }
-
-    // dumping after
-    uprintf("Dumping pairing eeprom storage\n");
-    for (uint8_t i = 0; i < PAIRING_STORAGE_SIZE; i++) {
-        uprintf("%u ", stored_sequences[i]);
-    }
-    uprintf("\nEnd of Dumping pairing eeprom storage\n");
     eeprom_update_block(stored_sequences, (uint8_t *)EECONFIG_SIZE, PAIRING_STORAGE_SIZE);
     return true;
 }
@@ -82,8 +81,6 @@ void pairing_validate_handler() {
     bool    valid = true;
     uint8_t event[RAW_EPSIZE];
     for (uint8_t i = 0; i < PAIRING_SEQUENCE_SIZE; i++) {
-        uprintf("\nExpected: Row: %u / Col:%u\n", keyboard_pairing_sequence[i].col, keyboard_pairing_sequence[i].row);
-        uprintf("GOT: Row: %u / Col:%u\n", host_pairing_sequence[i].col, host_pairing_sequence[i].row);
 
         if (keyboard_pairing_sequence[i].row != host_pairing_sequence[i].row) {
             valid = false;
@@ -126,6 +123,12 @@ void create_pairing_code(void) {
     }
 }
 
+void pairing_key_input_event(void) {
+    uint8_t event[RAW_EPSIZE];
+    event[0] = ORYX_EVT_PAIRING_KEY_INPUT;
+    raw_hid_send(event, sizeof(event));
+}
+
 void oryx_layer_event(void) {
     uint8_t layer;
     uint8_t event[RAW_EPSIZE];
@@ -145,6 +148,7 @@ bool process_record_oryx(uint16_t keycode, keyrecord_t *record) {
         if (!record->event.pressed) {
             if (pairing_input_index < PAIRING_SEQUENCE_SIZE) {
                 host_pairing_sequence[pairing_input_index++] = record->event.key;
+                pairing_key_input_event();
             }
             if (pairing_input_index == PAIRING_SEQUENCE_SIZE) {
                 rawhid_state.pairing = false;

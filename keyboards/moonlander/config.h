@@ -34,6 +34,7 @@
 /* key matrix size */
 #define MATRIX_ROWS 12
 #define MATRIX_COLS 7
+#define MATRIX_SIZE 72
 
 /*  PCB default pin-out */
 // #define MATRIX_ROW_PINS { B10, B11, B12, B13, B14, B15 }
