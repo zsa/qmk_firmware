@@ -81,7 +81,6 @@ void pairing_validate_handler() {
     bool    valid = true;
     uint8_t event[RAW_EPSIZE];
     for (uint8_t i = 0; i < PAIRING_SEQUENCE_SIZE; i++) {
-
         if (keyboard_pairing_sequence[i].row != host_pairing_sequence[i].row) {
             valid = false;
             break;
@@ -143,7 +142,7 @@ bool process_record_oryx(uint16_t keycode, keyrecord_t *record) {
     // In pairing mode, key events are absorbed, and the host pairing sequence is filled.
     // Once filled, the keyboard and host sequence are compaired, pairing state set to false
     // and the proper pairing validation event is sent to the host
-    if (rawhid_state.pairing) {
+    if (rawhid_state.pairing == true) {
         // The host pairing sequence is filled on key up only
         if (!record->event.pressed) {
             if (pairing_input_index < PAIRING_SEQUENCE_SIZE) {
@@ -159,7 +158,7 @@ bool process_record_oryx(uint16_t keycode, keyrecord_t *record) {
         return false;
     }
     // While paired, the keyboard sends keystrokes positions to the host
-    if (rawhid_state.paired) {
+    if (rawhid_state.paired == true) {
         uint8_t event[RAW_EPSIZE];
         event[0] = record->event.pressed ? ORYX_EVT_KEYDOWN : ORYX_EVT_KEYUP;
         event[1] = record->event.key.col;
