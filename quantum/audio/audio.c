@@ -146,6 +146,7 @@ void audio_init() {
 
 void audio_startup(void) {
     if (audio_config.enable) {
+        wait_ms(100);// Small wait time required on some boards to properly play the startup song.
         PLAY_SONG(startup_song);
     }
 
