@@ -166,3 +166,8 @@
 #define AUDIO_INIT_DELAY
 
 #define TAPPING_TOGGLE 1
+
+#ifdef AUDIO_ENABLE
+#define STARTUP_SONG SONG(E__NOTE(_DS5), E__NOTE(_D5), E__NOTE(_AS4), Q__NOTE(_F5))
+#define GOODBYE_SONG SONG(E__NOTE(_D5), E__NOTE(_F5), E__NOTE(_C5), Q__NOTE(_AS4))
+#endif
