@@ -14,7 +14,4 @@
 #    ifndef ISSI_TIMEOUT
 #        define ISSI_TIMEOUT 5
 #    endif
-#    if !defined(MOONLANDER_I2C_TIMEOUT) && ISSI_TIMEOUT < 10
-#        define MOONLANDER_I2C_TIMEOUT (10 - ISSI_TIMEOUT)
-#    endif
 #endif
