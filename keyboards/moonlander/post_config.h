@@ -10,8 +10,6 @@
 #    endif
 #endif
 
-#ifdef RGB_MATIRX_ENABLE
-#    ifndef ISSI_TIMEOUT
-#        define ISSI_TIMEOUT 5
-#    endif
+#ifndef ISSI_TIMEOUT
+#    define ISSI_TIMEOUT 5
 #endif
