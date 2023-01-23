@@ -42,11 +42,9 @@ void moonlander_led_task(void) {
         ML_LED_1(false);
         ML_LED_2(false);
         ML_LED_3(false);
-        #ifndef HALFMOON
         ML_LED_4(false);
         ML_LED_5(false);
         ML_LED_6(false);
-        #endif
 
         ML_LED_1(true);
         wait_ms(250);
@@ -54,28 +52,32 @@ void moonlander_led_task(void) {
         wait_ms(250);
         ML_LED_3(true);
         wait_ms(250);
-        #ifndef HALFMOON
-        ML_LED_4(true);
-        wait_ms(250);
-        ML_LED_5(true);
-        wait_ms(250);
-        ML_LED_6(true);
-        wait_ms(250);
-        #endif
+    
+        if (is_transport_connected()) {
+            ML_LED_4(true);
+            wait_ms(250);
+            ML_LED_5(true);
+            wait_ms(250);
+            ML_LED_6(true);
+            wait_ms(250);
+        }
+
         ML_LED_1(false);
         wait_ms(250);
         ML_LED_2(false);
         wait_ms(250);
         ML_LED_3(false);
         wait_ms(250);
-        #ifndef HALFMOON
-        ML_LED_4(false);
-        wait_ms(250);
-        ML_LED_5(false);
-        wait_ms(250);
-        ML_LED_6(false);
-        wait_ms(250);
-        #endif
+
+        if (is_transport_connected()) {
+            ML_LED_4(false);
+            wait_ms(250);
+            ML_LED_5(false);
+            wait_ms(250);
+            ML_LED_6(false);
+            wait_ms(250);
+        }
+
         is_launching = false;
         layer_state_set_kb(layer_state);
     }
