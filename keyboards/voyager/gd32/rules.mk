@@ -1,5 +1,5 @@
 # MCU name
-MCU = STM32F303
+MCU = GD32F303  
 
 # Bootloader selection
 BOOTLOADER = ignition
