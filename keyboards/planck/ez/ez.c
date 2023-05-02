@@ -1,4 +1,6 @@
 /* Copyright 2018 Jack Humbert <jack.humb@gmail.com>
+ * Copyright 2015 ZSA Technology Labs Inc (@zsa)
+ * Copyright 2020 Christopher Courtney, aka Drashna Jael're  (@drashna) <drashna@live.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -14,24 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "ez.h"
-#include "ch.h"
-#include "hal.h"
+#include <ch.h>
+#include <hal.h>
 
 keyboard_config_t keyboard_config;
-
-
 #ifdef RGB_MATRIX_ENABLE
-void suspend_power_down_kb(void) {
-    rgb_matrix_set_suspend_state(true);
-    suspend_power_down_user();
-}
-
-void suspend_wakeup_init_kb(void) {
-    rgb_matrix_set_suspend_state(false);
-    suspend_wakeup_init_user();
-}
-
-const is31_led g_is31_leds[DRIVER_LED_TOTAL] = {
+const is31_led PROGMEM g_is31_leds[DRIVER_LED_TOTAL] = {
 /* Refer to IS31 manual for these locations
  *   driver
  *   |  R location
@@ -115,8 +105,14 @@ led_config_t g_led_config = { {
     1, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1,
     1, 1, 1, 1, 1, 4, 1, 1, 1, 1, 1
 } };
+
+void keyboard_post_init_kb(void) {
+    rgb_matrix_enable_noeeprom();
+    keyboard_post_init_user();
+}
 #endif
 
+/* Left B9   Right B8 */
 
 // See http://jared.geek.nz/2013/feb/linear-led-pwm
 static uint16_t cie_lightness(uint16_t v) {
@@ -134,7 +130,7 @@ static uint16_t cie_lightness(uint16_t v) {
   }
 }
 
- static PWMConfig pwmCFG = {
+static PWMConfig pwmCFG = {
     0xFFFF,/* PWM clock frequency  */
     256,/* initial PWM period (in ticks) 1S (1/10kHz=0.1mS 0.1ms*10000 ticks=1S) */
     NULL,
@@ -212,41 +208,22 @@ void keyboard_pre_init_kb(void) {
     }
     // read kb settings from eeprom
     keyboard_config.raw = eeconfig_read_kb();
-#ifdef RGB_MATRIX_ENABLE
-    if (keyboard_config.rgb_matrix_enable) {
-        rgb_matrix_set_flags(LED_FLAG_ALL);
-    } else {
-        rgb_matrix_set_flags(LED_FLAG_NONE);
-    }
-#endif
-
-    // initialize settings for front LEDs
     led_initialize_hardware();
     keyboard_pre_init_user();
 }
 
-#ifdef RGB_MATRIX_ENABLE
-void keyboard_post_init_kb(void) {
-    rgb_matrix_enable_noeeprom();
-    keyboard_post_init_user();
-}
-#endif
-
 void eeconfig_init_kb(void) {  // EEPROM is getting reset!
     keyboard_config.raw = 0;
-    keyboard_config.rgb_matrix_enable = true;
     keyboard_config.led_level = 4;
-
     eeconfig_update_kb(keyboard_config.raw);
     eeconfig_init_user();
 }
-
 
 layer_state_t layer_state_set_kb(layer_state_t state) {
     planck_ez_left_led_off();
     planck_ez_right_led_off();
     state = layer_state_set_user(state);
-    uint8_t layer = biton32(state);
+    uint8_t layer = get_highest_layer(state);
     switch (layer) {
         case 1:
             planck_ez_left_led_on();
@@ -282,7 +259,7 @@ bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
         case TOGGLE_LAYER_COLOR:
             if (record->event.pressed) {
                 keyboard_config.disable_layer_led ^= 1;
-              if (keyboard_config.disable_layer_led)
+                if (keyboard_config.disable_layer_led)
                     rgb_matrix_set_color_all(0, 0, 0);
                 eeconfig_update_kb(keyboard_config.raw);
             }
@@ -292,23 +269,21 @@ bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
               switch (rgb_matrix_get_flags()) {
                 case LED_FLAG_ALL: {
                     rgb_matrix_set_flags(LED_FLAG_NONE);
-                    keyboard_config.rgb_matrix_enable = false;
                     rgb_matrix_set_color_all(0, 0, 0);
                   }
                   break;
                 default: {
                     rgb_matrix_set_flags(LED_FLAG_ALL);
-                    keyboard_config.rgb_matrix_enable = true;
                   }
                   break;
               }
-              eeconfig_update_kb(keyboard_config.raw);
             }
             return false;
 #endif
     }
-  return process_record_user(keycode, record);
+    return process_record_user(keycode, record);
 }
+
 
 #ifdef AUDIO_ENABLE
 bool music_mask_kb(uint16_t keycode) {
@@ -317,7 +292,7 @@ bool music_mask_kb(uint16_t keycode) {
     case QK_LAYER_TAP_TOGGLE ... QK_LAYER_MOD_MAX:
     case QK_MOD_TAP ... QK_MOD_TAP_MAX:
     case AU_ON ... MUV_DE:
-    case RESET:
+    case QK_BOOT:
     case EEP_RST:
         return false;
     default:
@@ -325,16 +300,35 @@ bool music_mask_kb(uint16_t keycode) {
     }
 }
 #endif
+
 #ifdef ORYX_ENABLE
 static uint16_t loops = 0;
 static bool is_on = false;
+#endif
+
+#ifdef DYNAMIC_MACRO_ENABLE
+static bool is_dynamic_recording = false;
+static uint16_t dynamic_loop_timer;
+
+void dynamic_macro_record_start_user(void) {
+    is_dynamic_recording = true;
+    dynamic_loop_timer = timer_read();
+    planck_ez_left_led_on();
+}
+
+void dynamic_macro_record_end_user(int8_t direction) {
+    is_dynamic_recording = false;
+    layer_state_set_kb(layer_state);
+}
+#endif
 
 void matrix_scan_kb(void) {
-    if(webusb_state.pairing == true) {
+#ifdef ORYX_ENABLE
+    if(rawhid_state.pairing == true) {
         if(loops == 0) {
           //lights off
         }
-        if(loops % WEBUSB_BLINK_STEPS == 0) {
+        if(loops % PAIRING_BLINK_STEPS == 0) {
             if(is_on) {
               planck_ez_left_led_on();
               planck_ez_right_led_off();
@@ -345,8 +339,8 @@ void matrix_scan_kb(void) {
             }
             is_on ^= 1;
         }
-        if(loops > WEBUSB_BLINK_END * 2) {
-            webusb_state.pairing = false;
+        if(loops > PAIRING_BLINK_END * 2) {
+            rawhid_state.pairing = false;
             loops = 0;
             planck_ez_left_led_off();
             planck_ez_right_led_off();
@@ -358,5 +352,41 @@ void matrix_scan_kb(void) {
       planck_ez_left_led_off();
       planck_ez_right_led_off();
     }
+#endif
+#ifdef DYNAMIC_MACRO_ENABLE
+    if (is_dynamic_recording) {
+        if (timer_elapsed(dynamic_loop_timer) > 1)
+        {
+            static uint8_t counter;
+            counter++;
+            if (counter > 100) {
+                planck_ez_left_led_on();
+            } else {
+                planck_ez_left_led_off();
+
+            }
+            dynamic_loop_timer = timer_read();
+        }
+    }
+#endif
+    matrix_scan_user();
 }
+
+#ifdef SWAP_HANDS_ENABLE
+__attribute__ ((weak))
+const keypos_t PROGMEM hand_swap_config[MATRIX_ROWS][MATRIX_COLS] = {
+    {{5, 4}, {4, 4}, {3, 4}, {2, 4}, {1, 4}, {0, 4}},
+    {{5, 5}, {4, 5}, {3, 5}, {2, 5}, {1, 5}, {0, 5}},
+    {{5, 6}, {4, 6}, {3, 6}, {2, 6}, {1, 6}, {0, 6}},
+    {{5, 3}, {4, 3}, {3, 3}, {2, 3}, {1, 3}, {0, 3}},
+
+    {{5, 0}, {4, 0}, {3, 0}, {2, 0}, {1, 0}, {0, 0}},
+    {{5, 1}, {4, 1}, {3, 1}, {2, 1}, {1, 1}, {0, 1}},
+    {{5, 2}, {4, 2}, {3, 2}, {2, 2}, {1, 2}, {0, 2}},
+    {{5, 7}, {4, 7}, {3, 7}, {2, 7}, {1, 7}, {0, 7}},
+};
+
+#    ifdef ENCODER_MAP_ENABLE
+const uint8_t PROGMEM encoder_hand_swap_config[NUM_ENCODERS] = {0};
+#    endif
 #endif

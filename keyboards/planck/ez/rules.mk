@@ -1,23 +1,34 @@
 # MCU name
 MCU = STM32F303
 
-# Build Options
-#   comment out to disable the options.
-#
-BACKLIGHT_ENABLE = no
-BOOTMAGIC_ENABLE = yes  # Virtual DIP switch configuration
-## (Note that for BOOTMAGIC on Teensy LC you have to use a custom .ld script.)
-MOUSEKEY_ENABLE = yes # Mouse keys
-EXTRAKEY_ENABLE = yes # Audio control and System control
-CONSOLE_ENABLE = no  # Console for debug
-COMMAND_ENABLE = no    # Commands for debug and configuration
-#SLEEP_LED_ENABLE = yes  # Breathing sleep LED during USB suspend
-NKRO_ENABLE = yes     # USB Nkey Rollover
-CUSTOM_MATRIX = no # Custom matrix file
-AUDIO_ENABLE = yes
-RGBLIGHT_ENABLE = no
-# SERIAL_LINK_ENABLE = yes
-ENCODER_ENABLE = yes
-RGB_MATRIX_ENABLE = IS31FL3737
+# Bootloader selection
+BOOTLOADER = stm32-dfu
 
-LAYOUTS += ortho_4x12
+# Build Options
+#   change yes to no to disable
+#
+BOOTMAGIC_ENABLE = yes      # Enable Bootmagic Lite
+MOUSEKEY_ENABLE = yes       # Mouse keys
+EXTRAKEY_ENABLE = yes       # Audio control and System control
+CONSOLE_ENABLE = no         # Console for debug
+COMMAND_ENABLE = no         # Commands for debug and configurationv
+NKRO_ENABLE = yes           # Enable N-Key Rollover
+BACKLIGHT_ENABLE = no       # Enable keyboard backlight functionality
+AUDIO_ENABLE = yes          # Audio output
+AUDIO_DRIVER = dac_additive
+RGBLIGHT_ENABLE = no        # Enable WS2812 RGB underlight.
+
+ENCODER_ENABLE = yes
+RGB_MATRIX_DRIVER = IS31FL3737
+
+MOUSE_SHARED_EP = no
+
+LAYOUTS_HAS_RGB = no
+
+RGB_MATRIX_SUPPORTED = yes
+RGBLIGHT_SUPPORTED = no
+BAKCLIGHT_SUPPORTED = no
+
+MOUSE_SHARED_EP = no
+
+DEFAULT_FOLDER = planck/ez/base

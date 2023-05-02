@@ -1,0 +1,54 @@
+name: Build firmware
+on:
+  push:
+    paths-ignore:
+      - '**.md'
+  pull_request:
+    paths-ignore:
+      - '**.md'
+  workflow_dispatch:
+
+
+jobs:
+  build-firmware:
+    runs-on: ubuntu-latest
+    container: qmkfm/qmk_cli
+    strategy:
+      fail-fast: false
+      matrix:
+        keyboard:
+          - ergodox_ez
+          - ergodox_ez/shine
+          - ergodox_ez/glow
+          - moonlander
+          - planck/ez
+          - planck/ez/glow
+        keymap:
+          - default
+          - oryx
+
+    steps:
+    - name: Checkout QMK Firmware
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 1
+        persist-credentials: false
+        submodules: true
+
+    - name: Build
+      id: build
+      run: |
+        qmk compile -kb ${{ matrix.keyboard}} -km ${{ matrix.keymap }}
+
+        TARGET="$(echo "${{ matrix.keyboard }}" | sed 's#/#_#g')_${{matrix.keymap}}"
+        echo ::set-output name=artifact-name::${TARGET}
+        echo "Artifact-name: ${{ steps.build.outputs.artifact-name }}"
+
+    - name: Archive artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: "${{ steps.build.outputs.artifact-name }}"
+        path: |
+          *.hex
+          *.bin
+      continue-on-error: true

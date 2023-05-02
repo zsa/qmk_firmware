@@ -1,68 +1,106 @@
-.history/
-.dep
-*.o
-*.bin
-*.eep
+# Junk files
+*.bak
+*.swp
+*~
+.DS_Store
+._*
+
+# Merge files
+*.orig
+*.rej
+
+# Build artifacts
+.clang_complete
+.build/
 *.elf
-*.hex
-*.qmk
-!util/bootloader.hex
-!quantum/tools/eeprom_reset.hex
 *.log
 *.lss
 *.lst
 *.map
+*.o
+*.stackdump
 *.sym
-*.swp
-tags
-*~
-build/
-.build/
-*.bak
-.vagrant/
+
+# QMK-specific
+api_data/v1
 quantum/version.h
+*.bin
+*.eep
+*.hex
+*.qmk
+*.uf2
+
+# Old-style QMK Makefiles
+/keyboards/**/Makefile
+
+# kbfirmware....
+/keyboards/**/kb.h
+/keyboards/**/kb.c
+
+# Eclipse/PyCharm/Other IDE Settings
+*.iml
+.browse.VC.db*
+.cproject
+.idea
 .idea/
-CMakeLists.txt
+.project
+.settings/
+.vagrant/
+
+# ?
+.dep
+.history/
+build/
 cmake-build-debug
-doxygen/
-.DS_Store
+CMakeLists.txt
+
+# Let these ones be user specific, since we have so many different configurations
+*.code-workspace
+.stfolder
+.tags
+.vscode/c_cpp_properties.json
+.vscode/ipch/
+.vscode/last.sql
+.vscode/launch.json
+.vscode/tasks.json
+.vscode/temp.sql
+tags
+
+# Ignore image/font files
+*.gif
+*.jpg
+*.png
+*.ttf
+*.otf
+
+# Things Travis sees
+/.vs
+id_rsa_*
+secrets.tar
+
+# Python things
+__pycache__
+.python-version
+
+# Prerequisites for updating ChibiOS
+/util/fmpp*
+
+# Allow to exist but don't include it in the repo
+user_song_list.h
+
 /util/wsl_downloaded
 /util/win_downloaded
 /users/
 /layouts/
-/keyboards/*/Makefile
+/keyboards/*
 !/keyboards/ergodox_ez/
 !/keyboards/planck/
+!/keyboards/moonlander/
 
-# Eclipse/PyCharm/Other IDE Settings
-.cproject
-.project
-.settings/
-.idea
-*.iml
-.browse.VC.db*
-*.stackdump
-util/Win_Check_Output.txt
-# Let these ones be user specific, since we have so many different configurations
-.vscode/c_cpp_properties.json
-.vscode/launch.json
-.vscode/tasks.json
-.vscode/last.sql
-.vscode/temp.sql
-.stfolder
-.tags
+# clangd
+compile_commands.json
+.clangd/
+.cache/
 
-# ignore image files
-*.png
-*.jpg
-*.gif
-
-# Do not ignore MiniDox left/right hand eeprom files
-
-# things travis sees
-secrets.tar
-id_rsa_*
-/.vs
-
-# python things
-__pycache__
+# VIA(L) json files that don't belong in QMK repo
+via*.json

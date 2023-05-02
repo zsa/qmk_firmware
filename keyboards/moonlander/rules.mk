@@ -1,24 +1,31 @@
-#Cortex version
-MCU  = STM32F303
+# MCU name
+MCU = STM32F303
 
-#Build Options
-#comment out to disable the options.
+# Bootloader selection
+BOOTLOADER = stm32-dfu
+
+# Build Options
+#   change yes to no to disable
 #
-BACKLIGHT_ENABLE = no
-BOOTMAGIC_ENABLE = lite # Virtual DIP switch configuration
-MOUSEKEY_ENABLE = yes   # Mouse keys
-EXTRAKEY_ENABLE = yes   # Audio control and System control
-CONSOLE_ENABLE = yes    # Console for debug
-COMMAND_ENABLE = yes    # Commands for debug and configuration
-#SLEEP_LED_ENABLE = yes #Breathing sleep LED during USB suspend
-NKRO_ENABLE = yes	    # USB Nkey Rollover
-CUSTOM_MATRIX = yes # Custom matrix file
-AUDIO_ENABLE = yes
+BOOTMAGIC_ENABLE = yes      # Enable Bootmagic Lite
+MOUSEKEY_ENABLE = yes       # Mouse keys
+EXTRAKEY_ENABLE = yes       # Audio control and System control
+CONSOLE_ENABLE = no        # Console for debug
+COMMAND_ENABLE = no        # Commands for debug and configuration
+NKRO_ENABLE = yes           # Enable N-Key Rollover
+BACKLIGHT_ENABLE = no       # Enable keyboard backlight functionality
+RGBLIGHT_ENABLE = no        # Enable keyboard RGB underglow
+AUDIO_ENABLE = yes          # Audio output
+AUDIO_DRIVER = dac_additive
+CUSTOM_MATRIX = lite
 SWAP_HANDS_ENABLE = yes
-RGB_MATRIX_ENABLE = IS31FL3731
-#SERIAL_LINK_ENABLE = yes
-EEPROM_DRIVER      = i2c
+RGB_MATRIX_ENABLE = yes
+RGB_MATRIX_DRIVER = IS31FL3731
+EEPROM_DRIVER = i2c
+MOUSE_SHARED_EP = no
 
 #project specific files
-SRC = matrix.c
+SRC += matrix.c
 QUANTUM_LIB_SRC += i2c_master.c
+
+MOUSE_SHARED_EP = no

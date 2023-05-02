@@ -6,10 +6,10 @@
 #include "keymap_spanish.h"
 #include "keymap_hungarian.h"
 #include "keymap_swedish.h"
-#include "keymap_br_abnt2.h"
+#include "keymap_brazilian_abnt2.h"
 #include "keymap_canadian_multilingual.h"
-#include "keymap_german_ch.h"
-#include "keymap_jp.h"
+#include "keymap_swiss_de.h"
+#include "keymap_japanese.h"
 
 #define KC_MAC_UNDO LGUI(KC_Z)
 #define KC_MAC_CUT LGUI(KC_X)
@@ -68,6 +68,7 @@ bool suspended = false;
 
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
   switch (keycode) {
+#ifdef RGBLIGHT_ENABLE
       case RGB_SLD:
         if (record->event.pressed) {
                 rgblight_mode(1);
@@ -100,6 +101,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 #endif
               }
         return false;
+#endif
     }
   return true;
 }

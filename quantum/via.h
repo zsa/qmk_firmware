@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <tmk_core/common/eeconfig.h>  // for EECONFIG_SIZE
+#include "eeconfig.h" // for EECONFIG_SIZE
 
 // Keyboard level code can change where VIA stores the magic.
 // The magic is the build date YYMMDD encoded as BCD in 3 bytes,
@@ -37,6 +37,14 @@
 #    define VIA_EEPROM_LAYOUT_OPTIONS_SIZE 1
 #endif
 
+// Allow override of the layout options default value.
+// This requires advanced knowledge of how VIA stores layout options
+// and is only really useful for setting a boolean layout option
+// state to true by default.
+#ifndef VIA_EEPROM_LAYOUT_OPTIONS_DEFAULT
+#    define VIA_EEPROM_LAYOUT_OPTIONS_DEFAULT 0x00000000
+#endif
+
 // The end of the EEPROM memory used by VIA
 // By default, dynamic keymaps will start at this if there is no
 // custom config
@@ -46,12 +54,14 @@
 #    define VIA_EEPROM_CUSTOM_CONFIG_SIZE 0
 #endif
 
+#define VIA_EEPROM_CONFIG_END (VIA_EEPROM_CUSTOM_CONFIG_ADDR + VIA_EEPROM_CUSTOM_CONFIG_SIZE)
+
 // This is changed only when the command IDs change,
 // so VIA Configurator can detect compatible firmware.
-#define VIA_PROTOCOL_VERSION 0x0009
+#define VIA_PROTOCOL_VERSION 0x000A
 
 enum via_command_id {
-    id_get_protocol_version                 = 0x01,  // always 0x01
+    id_get_protocol_version                 = 0x01, // always 0x01
     id_get_keyboard_value                   = 0x02,
     id_set_keyboard_value                   = 0x03,
     id_dynamic_keymap_get_keycode           = 0x04,
@@ -70,11 +80,13 @@ enum via_command_id {
     id_dynamic_keymap_get_layer_count       = 0x11,
     id_dynamic_keymap_get_buffer            = 0x12,
     id_dynamic_keymap_set_buffer            = 0x13,
+    id_dynamic_keymap_get_encoder           = 0x14,
+    id_dynamic_keymap_set_encoder           = 0x15,
     id_unhandled                            = 0xFF,
 };
 
 enum via_keyboard_value_id {
-    id_uptime              = 0x01,  //
+    id_uptime              = 0x01, //
     id_layout_options      = 0x02,
     id_switch_matrix_state = 0x03
 };
@@ -144,17 +156,14 @@ bool via_eeprom_is_valid(void);
 // Keyboard level code (eg. via_init_kb()) should not call this
 void via_eeprom_set_valid(bool valid);
 
-// Flag QMK and VIA/keyboard level EEPROM as invalid.
-// Used in bootmagic_lite() and VIA command handler.
-// Keyboard level code should not need to call this.
-void via_eeprom_reset(void);
-
 // Called by QMK core to initialize dynamic keymaps etc.
+void eeconfig_init_via(void);
 void via_init(void);
 
 // Used by VIA to store and retrieve the layout options.
 uint32_t via_get_layout_options(void);
 void     via_set_layout_options(uint32_t value);
+void     via_set_layout_options_kb(uint32_t value);
 
 // Called by QMK core to process VIA-specific keycodes.
 bool process_record_via(uint16_t keycode, keyrecord_t *record);
