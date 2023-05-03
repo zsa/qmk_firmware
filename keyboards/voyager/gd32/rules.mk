@@ -22,6 +22,7 @@ RGB_MATRIX_ENABLE = yes
 RGB_MATRIX_DRIVER = IS31FL3731
 EEPROM_DRIVER = i2c
 MOUSE_SHARED_EP = no
+DFU_SUFFIX_ARGS = -v 3297 -p 1791
 
 #project specific files
 SRC += matrix.c
