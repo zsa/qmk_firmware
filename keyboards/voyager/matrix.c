@@ -38,6 +38,7 @@ extern bool is_launching;
 
 bool           mcp23018_initd = false;
 static uint8_t mcp23018_reset_loop;
+static uint8_t mcp23018_restarting_loop;
 
 uint8_t mcp23018_tx[3];
 uint8_t mcp23018_rx[1];
@@ -70,13 +71,13 @@ void mcp23018_init(void) {
 
 void mcp23018_init(void) {
     i2c_init();
-
     // #define MCP23_ROW_PINS { GPB5, GBP4, GBP3, GBP2, GBP1, GBP0 }       outputs
     // #define MCP23_COL_PINS { GPA0, GBA1, GBA2, GBA3, GBA4, GBA5, GBA6 } inputs
 
-    mcp23018_tx[0] = 0x00;       // IODIRA
-    mcp23018_tx[1] = 0b00000000; // A is output
-    mcp23018_tx[2] = 0b00111111; // B is inputs
+    mcp23018_restarting_loop = 0;
+    mcp23018_tx[0]           = 0x00;       // IODIRA
+    mcp23018_tx[1]           = 0b00000000; // A is output
+    mcp23018_tx[2]           = 0b00111111; // B is inputs
 
     if (MSG_OK != i2c_transmit(MCP23018_DEFAULT_ADDRESS << 1, mcp23018_tx, 3, VOYAGER_I2C_TIMEOUT)) {
         dprintf("error hori\n");
@@ -88,6 +89,7 @@ void mcp23018_init(void) {
         if (MSG_OK != i2c_transmit(MCP23018_DEFAULT_ADDRESS << 1, mcp23018_tx, 3, VOYAGER_I2C_TIMEOUT)) {
             dprintf("error hori\n");
         } else {
+            mcp23018_restarting_loop = 1;
             mcp23018_initd = is_launching = true;
         }
     }
@@ -117,12 +119,13 @@ void matrix_init_custom(void) {
 bool matrix_scan_custom(matrix_row_t current_matrix[]) {
     bool changed = false;
 
+    if (mcp23018_initd && mcp23018_restarting_loop != 0) {
+        mcp23018_restarting_loop++;
+    }
+
     // Try to re-init right side
     if (!mcp23018_initd) {
         if (++mcp23018_reset_loop == 0) {
-            // if (++mcp23018_reset_loop >= 1300) {
-            // since mcp23018_reset_loop is 8 bit - we'll try to reset once in 255 matrix scans
-            // this will be approx bit more frequent than once per second
             print("trying to reset mcp23018\n");
             mcp23018_init();
             if (!mcp23018_initd) {
@@ -163,10 +166,12 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
                 break; // Left hand has 6 rows
         }
 
-        // right side
-        if (mcp23018_initd) {
+        if (mcp23018_initd && mcp23018_restarting_loop == 0) {
             // #define MCP23_ROW_PINS { GPB5, GBP4, GBP3, GBP2, GBP1, GBP0 }       outputs
             // #define MCP23_COL_PINS { GPA0, GBA1, GBA2, GBA3, GBA4, GBA5, GBA6 } inputs
+
+            if (mcp23018_restarting_loop == 0xFF) {
+            }
 
             // select row
             mcp23018_tx[0] = 0x12;                                                                  // GPIOA
@@ -179,7 +184,6 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
             }
 
             // read col
-
             mcp23018_tx[0] = 0x13; // GPIOB
             if (MSG_OK != i2c_readReg(MCP23018_DEFAULT_ADDRESS << 1, mcp23018_tx[0], &mcp23018_rx[0], 1, VOYAGER_I2C_TIMEOUT)) {
                 dprintf("error vert\n");
@@ -187,7 +191,6 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
             }
 
             data = ~(mcp23018_rx[0] & 0b00111111);
-            // data = 0x01;
         } else {
             data = 0;
         }
@@ -200,7 +203,7 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
         // left side
         if (row < ROWS_PER_HAND) {
             // i2c comm incur enough wait time
-            if (!mcp23018_initd) {
+            if (!mcp23018_initd || mcp23018_restarting_loop != 0) {
                 // need wait to settle pin state
                 matrix_io_delay();
             }
