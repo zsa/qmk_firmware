@@ -43,8 +43,6 @@ void voyager_led_task(void) {
         VY_LED_2(false);
         VY_LED_3(false);
         VY_LED_4(false);
-        VY_LED_5(false);
-        VY_LED_6(false);
 
         VY_LED_1(true);
         wait_ms(250);
@@ -54,10 +52,6 @@ void voyager_led_task(void) {
         wait_ms(250);
         VY_LED_4(true);
         wait_ms(250);
-        VY_LED_5(true);
-        wait_ms(250);
-        VY_LED_6(true);
-        wait_ms(250);
         VY_LED_1(false);
         wait_ms(250);
         VY_LED_2(false);
@@ -65,10 +59,6 @@ void voyager_led_task(void) {
         VY_LED_3(false);
         wait_ms(250);
         VY_LED_4(false);
-        wait_ms(250);
-        VY_LED_5(false);
-        wait_ms(250);
-        VY_LED_6(false);
         wait_ms(250);
         is_launching = false;
         layer_state_set_kb(layer_state);
@@ -117,37 +107,41 @@ layer_state_t layer_state_set_kb(layer_state_t state) {
     bool LED_1 = false;
     bool LED_2 = false;
     bool LED_3 = false;
-    bool LED_4 = false;
-    bool LED_5 = false;
 #    if !defined(CAPS_LOCK_STATUS)
-    bool LED_6 = false;
+    bool LED_4 = false;
 #    endif
 
     uint8_t layer = get_highest_layer(state);
     switch (layer) {
         case 1:
             LED_1 = true;
-            LED_4 = true;
             break;
         case 2:
             LED_2 = true;
-            LED_5 = true;
             break;
         case 3:
             LED_3 = true;
 #    if !defined(CAPS_LOCK_STATUS)
-            LED_6 = true;
 #    endif
             break;
         case 4:
             LED_4 = true;
             break;
         case 5:
-            LED_5 = true;
+            LED_1 = true;
+            LED_2 = true;
             break;
         case 6:
+            LED_1 = true;
+            LED_2 = true;
+            LED_3 = true;
+            break;
+        case 7:
+            LED_1 = true;
+            LED_2 = true;
+            LED_3 = true;
 #    if !defined(CAPS_LOCK_STATUS)
-            LED_6 = true;
+            LED_4 = true;
 #    endif
             break;
         default:
@@ -157,10 +151,8 @@ layer_state_t layer_state_set_kb(layer_state_t state) {
     VY_LED_1(LED_1);
     VY_LED_2(LED_2);
     VY_LED_3(LED_3);
-    VY_LED_4(LED_4);
-    VY_LED_5(LED_5);
 #    if !defined(CAPS_LOCK_STATUS)
-    VY_LED_6(LED_6);
+    VY_LED_4(LED_4);
 #    endif
     return state;
 }
@@ -350,8 +342,6 @@ bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
                     VY_LED_2(false);
                     VY_LED_3(false);
                     VY_LED_4(false);
-                    VY_LED_5(false);
-                    VY_LED_6(false);
                 }
             }
             break;
