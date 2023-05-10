@@ -91,6 +91,7 @@ void mcp23018_init(void) {
         } else {
             mcp23018_restarting_loop = 1;
             mcp23018_initd = is_launching = true;
+            wait_ms(250);
         }
     }
 }
@@ -166,12 +167,9 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
                 break; // Left hand has 6 rows
         }
 
-        if (mcp23018_initd && mcp23018_restarting_loop == 0) {
+        if (mcp23018_initd) {
             // #define MCP23_ROW_PINS { GPB5, GBP4, GBP3, GBP2, GBP1, GBP0 }       outputs
             // #define MCP23_COL_PINS { GPA0, GBA1, GBA2, GBA3, GBA4, GBA5, GBA6 } inputs
-
-            if (mcp23018_restarting_loop == 0xFF) {
-            }
 
             // select row
             mcp23018_tx[0] = 0x12;                                                                  // GPIOA
@@ -189,8 +187,12 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
                 dprintf("error vert\n");
                 mcp23018_initd = false;
             }
-
-            data = ~(mcp23018_rx[0] & 0b00111111);
+            // We read from the io expander but don't use it until the reset loop is back to 0
+            if (mcp23018_restarting_loop == 0) {
+                data = ~(mcp23018_rx[0] & 0b00111111);
+            } else {
+                data = 0;
+            }
         } else {
             data = 0;
         }
