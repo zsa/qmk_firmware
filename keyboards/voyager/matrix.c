@@ -33,7 +33,7 @@ static matrix_row_t raw_matrix_right[MATRIX_COLS];
 #    define VOYAGER_I2C_TIMEOUT 100
 #endif
 
-extern bool mcp23018_leds[3];
+extern bool mcp23018_leds[2];
 extern bool is_launching;
 
 bool           mcp23018_initd = false;
@@ -43,36 +43,8 @@ static uint8_t mcp23018_restarting_loop;
 uint8_t mcp23018_tx[3];
 uint8_t mcp23018_rx[1];
 
-/*
-void mcp23018_init(void) {
-            i2c_init();
-    mcp23018_tx[0] = 0x00;       // IODIRA
-    mcp23018_tx[1] = 0b00000000; // A is output
-    mcp23018_tx[2] = 0b00111111; // B is inputs
-
-    if (MSG_OK == i2c_transmit(MCP23018_DEFAULT_ADDRESS << 1, mcp23018_tx, 3, VOYAGER_I2C_TIMEOUT)) {
-        mcp23018_tx[0] = 0x0C;       // GPPUA
-        mcp23018_tx[1] = 0b10000000; // A is not pulled-up
-        mcp23018_tx[2] = 0b11111111; // B is pulled-up
-
-        if (MSG_OK == i2c_transmit(MCP23018_DEFAULT_ADDRESS << 1, mcp23018_tx, 3, VOYAGER_I2C_TIMEOUT)) {
-            // after init try to read from the io expander to confirm everything is dandy
-            mcp23018_tx[0] = 0x13; // GPIOB
-            if (MSG_OK == i2c_readReg(MCP23018_DEFAULT_ADDRESS << 1, mcp23018_tx[0], &mcp23018_rx[0], 1, VOYAGER_I2C_TIMEOUT)) {
-                mcp23018_initd = is_launching = true;
-#ifdef RGB_MATRIX_ENABLE
-                rgb_matrix_init();
-#endif
-            }
-        }
-    }
-}
-*/
-
 void mcp23018_init(void) {
     i2c_init();
-    // #define MCP23_ROW_PINS { GPB5, GBP4, GBP3, GBP2, GBP1, GBP0 }       outputs
-    // #define MCP23_COL_PINS { GPA0, GBA1, GBA2, GBA3, GBA4, GBA5, GBA6 } inputs
 
     mcp23018_restarting_loop = 0;
     mcp23018_tx[0]           = 0x00;       // IODIRA
@@ -91,6 +63,7 @@ void mcp23018_init(void) {
         } else {
             mcp23018_restarting_loop = 1;
             mcp23018_initd = is_launching = true;
+            wait_ms(250);
         }
     }
 }
@@ -166,38 +139,16 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
                 break; // Left hand has 6 rows
         }
 
-        if (mcp23018_initd && mcp23018_restarting_loop == 0) {
-            // #define MCP23_ROW_PINS { GPB5, GBP4, GBP3, GBP2, GBP1, GBP0 }       outputs
-            // #define MCP23_COL_PINS { GPA0, GBA1, GBA2, GBA3, GBA4, GBA5, GBA6 } inputs
-
-            if (mcp23018_restarting_loop == 0xFF) {
-            }
-
+        if (mcp23018_initd) {
             // select row
-            mcp23018_tx[0] = 0x12;                                                                  // GPIOA
-            mcp23018_tx[1] = (0b01111111 & ~(1 << (row))) | ((uint8_t)!mcp23018_leds[2] << 7);      // activate row
+            mcp23018_tx[0] = 0x12; // GPIOA
+            mcp23018_tx[1] = (0b01111111 & ~(1 << (row)));
             mcp23018_tx[2] = ((uint8_t)!mcp23018_leds[1] << 6) | ((uint8_t)!mcp23018_leds[0] << 7); // activate row
 
             if (MSG_OK != i2c_transmit(MCP23018_DEFAULT_ADDRESS << 1, mcp23018_tx, 3, VOYAGER_I2C_TIMEOUT)) {
                 dprintf("error hori\n");
                 mcp23018_initd = false;
             }
-
-            // read col
-            mcp23018_tx[0] = 0x13; // GPIOB
-            if (MSG_OK != i2c_readReg(MCP23018_DEFAULT_ADDRESS << 1, mcp23018_tx[0], &mcp23018_rx[0], 1, VOYAGER_I2C_TIMEOUT)) {
-                dprintf("error vert\n");
-                mcp23018_initd = false;
-            }
-
-            data = ~(mcp23018_rx[0] & 0b00111111);
-        } else {
-            data = 0;
-        }
-
-        if (raw_matrix_right[row] != data) {
-            raw_matrix_right[row] = data;
-            changed               = true;
         }
 
         // left side
@@ -238,6 +189,30 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
                 changed             = true;
             }
         }
+
+        if (mcp23018_initd) {
+            // read col
+            mcp23018_tx[0] = 0x13; // GPIOB
+            if (MSG_OK != i2c_readReg(MCP23018_DEFAULT_ADDRESS << 1, mcp23018_tx[0], &mcp23018_rx[0], 1, VOYAGER_I2C_TIMEOUT)) {
+                dprintf("error vert\n");
+                mcp23018_initd = false;
+            }
+            // We read from the io expander but don't use it until the reset loop is back to 0
+
+            if (mcp23018_restarting_loop == 0) {
+                data = ~(mcp23018_rx[0] & 0b00111111);
+            } else {
+                data = 0;
+            }
+        } else {
+            data = 0;
+        }
+
+        if (raw_matrix_right[row] != data) {
+            raw_matrix_right[row] = data;
+            changed               = true;
+        }
+
     }
     for (uint8_t row = 0; row < ROWS_PER_HAND; row++) {
         current_matrix[11 - row] = 0;
