@@ -86,13 +86,15 @@ void matrix_init_custom(void) {
 
 bool matrix_scan_custom(matrix_row_t current_matrix[]) {
     bool changed = false;
-
     // Attempt to reset the mcp23018 if it's not initialized
     if (!mcp23018_initd) {
         if (++mcp23018_reset_loop == 0) {
             // Since mcp23018_reset_loop is 8 bit - we'll try to reset once in 255 matrix scans. This will be approx bit more frequent than once per second.
+            print("trying to reset mcp23018\n");
             mcp23018_init();
-            if (mcp23018_initd) {
+            if (!mcp23018_initd) {
+                print("right side not responding\n");
+            } else {
                 // If we managed to initialize the mcp23018 - we need to reinitialize the matrix / layer state.
                 matrix_init();
                 layer_state_set(0);
@@ -135,15 +137,16 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
 
         // Selecting the row on the right side of the keyboard.
         if (mcp23018_initd) {
+            // select row
             mcp23018_tx[0] = 0x12;                                                                  // GPIOA
             mcp23018_tx[1] = (0b01111111 & ~(1 << (row))) | ((uint8_t)!mcp23018_leds[2] << 7);      // activate row
             mcp23018_tx[2] = ((uint8_t)!mcp23018_leds[1] << 6) | ((uint8_t)!mcp23018_leds[0] << 7); // activate row
 
             if (MSG_OK != i2c_transmit(MCP23018_DEFAULT_ADDRESS << 1, mcp23018_tx, 3, VOYAGER_I2C_TIMEOUT)) {
+                dprintf("error hori\n");
                 mcp23018_initd = false;
             }
         }
-
         // Reading the left side of the keyboard.
         if (row < ROWS_PER_HAND) {
             // i2c comm incur enough wait time
@@ -185,8 +188,10 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
 
         // Reading the right side of the keyboard.
         if (mcp23018_initd) {
+            // read col
             mcp23018_tx[0] = 0x13; // GPIOB
             if (MSG_OK != i2c_readReg(MCP23018_DEFAULT_ADDRESS << 1, mcp23018_tx[0], &mcp23018_rx[0], 1, VOYAGER_I2C_TIMEOUT)) {
+                dprintf("error vert\n");
                 mcp23018_initd = false;
             }
 
