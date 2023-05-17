@@ -33,7 +33,7 @@ extern bool mcp23018_leds[3];
 extern bool is_launching;
 
 bool           mcp23018_initd = false;
-extern bool    IS31FL3731_initd[2];
+extern bool    IS31FL3731_initd;
 static uint8_t mcp23018_reset_loop;
 static uint8_t is31fl3731_reset_loop;
 
@@ -98,20 +98,10 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
 
 #ifdef RGB_MATRIX_ENABLE
     // We also need to reinitialize the RGB matrix if it's enabled.
-    if (!IS31FL3731_initd[0]) {
-        if (++is31fl3731_reset_loop == 0) {
-            IS31FL3731_init(DRIVER_ADDR_1);
-            if (IS31FL3731_initd[0]) {
-                wait_ms(50);
-                rgb_matrix_init();
-            }
-        }
-    }
-
-    if (!IS31FL3731_initd[1]) {
+    if (!IS31FL3731_initd) {
         if (++is31fl3731_reset_loop == 0) {
             IS31FL3731_init(DRIVER_ADDR_2);
-            if (IS31FL3731_initd[1]) {
+            if (IS31FL3731_initd) {
                 wait_ms(50);
                 rgb_matrix_init();
             }

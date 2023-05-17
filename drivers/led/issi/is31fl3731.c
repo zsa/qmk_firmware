@@ -71,7 +71,7 @@ bool    g_pwm_buffer_update_required[DRIVER_COUNT] = {false};
 uint8_t g_led_control_registers[DRIVER_COUNT][18]             = {{0}};
 bool    g_led_control_registers_update_required[DRIVER_COUNT] = {false};
 
-bool IS31FL3731_initd[2] = {false, false};
+bool IS31FL3731_initd = false;
 
 // This is the bit pattern in the LED control registers
 // (for matrix A, add one to register for matrix B)
@@ -97,13 +97,7 @@ void IS31FL3731_write_register(uint8_t addr, uint8_t reg, uint8_t data) {
     }
 #else
     if (MSG_OK != i2c_transmit(addr << 1, g_twi_transfer_buffer, 2, ISSI_TIMEOUT)) {
-        if (addr == DRIVER_ADDR_1) {
-            IS31FL3731_initd[0] = false;
-        }
-
-        if (addr == DRIVER_ADDR_2) {
-            IS31FL3731_initd[1] = false;
-        }
+        IS31FL3731_initd = false;
     }
 #endif
 }
@@ -131,13 +125,7 @@ void IS31FL3731_write_pwm_buffer(uint8_t addr, uint8_t *pwm_buffer) {
         }
 #else
         if (MSG_OK != i2c_transmit(addr << 1, g_twi_transfer_buffer, 17, ISSI_TIMEOUT)) {
-            if (addr == DRIVER_ADDR_1) {
-                IS31FL3731_initd[0] = false;
-            }
-
-            if (addr == DRIVER_ADDR_2) {
-                IS31FL3731_initd[1] = false;
-            }
+            IS31FL3731_initd = false;
         }
 #endif
     }
@@ -148,13 +136,8 @@ void IS31FL3731_init(uint8_t addr) {
     // in the LED driver's PWM registers, first enable software shutdown,
     // then set up the mode and other settings, clear the PWM registers,
     // then disable software shutdown.
-    if (addr == DRIVER_ADDR_1) {
-        IS31FL3731_initd[0] = true;
-    }
 
-    if (addr == DRIVER_ADDR_2) {
-        IS31FL3731_initd[1] = true;
-    }
+    IS31FL3731_initd = true;
     // select "function register" bank
     IS31FL3731_write_register(addr, ISSI_COMMANDREGISTER, ISSI_BANK_FUNCTIONREG);
 
