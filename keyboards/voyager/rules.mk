@@ -22,10 +22,11 @@ RGB_MATRIX_ENABLE = yes
 RGB_MATRIX_DRIVER = IS31FL3731
 EEPROM_DRIVER = vendor
 MOUSE_SHARED_EP = no
+LTO_ENABLE = no
+DFU_SUFFIX_ARGS = -v 3297 -p 0791
 
 #project specific files
 SRC += matrix.c
 QUANTUM_LIB_SRC += i2c_master.c
 
 MOUSE_SHARED_EP = no
-DFU_SUFFIX_ARGS = -v 3297 -p 0791
