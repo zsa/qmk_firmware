@@ -140,3 +140,7 @@
 #define MOUSEKEY_WHEEL_TIME_TO_MAX MOUSEKEY_TIME_TO_MAX
 
 #define TAPPING_TOGGLE 1
+
+// A small delay between selecting rows and reading columns
+// via I2C is needed for the IO expander to settle.
+#define IO_EXPANDER_DELAY 500
