@@ -96,8 +96,6 @@ void IS31FL3731_write_register(uint8_t addr, uint8_t reg, uint8_t data) {
         if (i2c_transmit(addr << 1, g_twi_transfer_buffer, 2, ISSI_TIMEOUT) == 0) break;
     }
 #else
-    if (addr == DRIVER_ADDR_1 && IS31FL3731_initd[0] == false) return;
-    if (addr == DRIVER_ADDR_2 && IS31FL3731_initd[1] == false) return;
     if (MSG_OK != i2c_transmit(addr << 1, g_twi_transfer_buffer, 2, ISSI_TIMEOUT)) {
         if (addr == DRIVER_ADDR_1) {
             IS31FL3731_initd[0] = false;
@@ -132,8 +130,6 @@ void IS31FL3731_write_pwm_buffer(uint8_t addr, uint8_t *pwm_buffer) {
             if (i2c_transmit(addr << 1, g_twi_transfer_buffer, 17, ISSI_TIMEOUT) == 0) break;
         }
 #else
-        if (addr == DRIVER_ADDR_1 && IS31FL3731_initd[0] == false) return;
-        if (addr == DRIVER_ADDR_2 && IS31FL3731_initd[1] == false) return;
         if (MSG_OK != i2c_transmit(addr << 1, g_twi_transfer_buffer, 17, ISSI_TIMEOUT)) {
             if (addr == DRIVER_ADDR_1) {
                 IS31FL3731_initd[0] = false;

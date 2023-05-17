@@ -199,7 +199,7 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
 
         // Reading the right side of the keyboard.
         if (mcp23018_initd) {
-            for (uint16_t i = 0; i < IO_EXPANDER_DELAY; i++) {
+            for (uint16_t i = 0; i < 500; i++) {
                 __asm__("nop");
             }
 
