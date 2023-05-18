@@ -33,7 +33,20 @@ __attribute__((weak)) void bootloader_jump(void) {
 }
 
 __attribute__((weak)) void mcu_reset(void) {
+#ifdef GD32
     NVIC_SystemReset();
+#endif
+#ifndef GD32
+    SCB->AIRCR = APP_ADDRESS & 0xFFFF;
+
+    // Set the stack pointer to the applications stack pointer
+    __asm__ volatile("msr msp, %0" ::"g"(*(volatile uint32_t *)APP_ADDRESS));
+
+    // Jump to the application
+    (*(void (**)())(APP_ADDRESS + 4))();
+    while (1)
+        ;
+#endif
 }
 
 void enter_bootloader_mode_if_requested(void) {

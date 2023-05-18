@@ -59,7 +59,7 @@ static void default_layer_state_set(layer_state_t state) {
  * Print out the hex value of the 32-bit default layer state, as well as the value of the highest bit.
  */
 void default_layer_debug(void) {
-    dprintf("%08lX(%u)", default_layer_state, get_highest_layer(default_layer_state));
+    // dprintf("%08lX(%u)", default_layer_state, get_highest_layer(default_layer_state));
 }
 
 /** \brief Default Layer Set
@@ -121,9 +121,9 @@ __attribute__((weak)) layer_state_t layer_state_set_kb(layer_state_t state) {
  */
 void layer_state_set(layer_state_t state) {
     state = layer_state_set_kb(state);
-#ifdef ORYX_ENABLE
+#    ifdef ORYX_ENABLE
     layer_state_set_oryx(state);
-#endif
+#    endif
     dprint("layer_state: ");
     layer_debug();
     dprint(" to ");
@@ -223,7 +223,7 @@ void layer_xor(layer_state_t state) {
  * Print out the hex value of the 32-bit layer state, as well as the value of the highest bit.
  */
 void layer_debug(void) {
-    dprintf("%08lX(%u)", layer_state, get_highest_layer(layer_state));
+    // dprintf("%08lX(%u)", layer_state, get_highest_layer(layer_state));
 }
 #endif
 

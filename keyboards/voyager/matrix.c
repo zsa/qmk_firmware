@@ -32,10 +32,10 @@ static matrix_row_t raw_matrix_right[MATRIX_COLS];
 extern bool mcp23018_leds[3];
 extern bool is_launching;
 
-bool           mcp23018_initd = false;
-extern bool    IS31FL3731_initd;
+bool mcp23018_initd = false;
+// extern bool    IS31FL3731_initd;
 static uint8_t mcp23018_reset_loop;
-static uint8_t is31fl3731_reset_loop;
+// static uint8_t is31fl3731_reset_loop;
 
 uint8_t mcp23018_tx[3];
 uint8_t mcp23018_rx[1];
@@ -60,6 +60,24 @@ void mcp23018_init(void) {
     }
 }
 
+bool led_driver_initd[2] = {false, false};
+
+bool led_driver_ready(uint8_t addr) {
+    uint8_t tx[1] = {0x00};
+    if (MSG_OK == i2c_readReg(addr << 1, tx[0], &tx[0], 1, VOYAGER_I2C_TIMEOUT)) {
+        return true;
+    }
+    return false;
+}
+
+bool io_expander_ready(void) {
+    uint8_t tx[1] = {0x13};
+    if (MSG_OK == i2c_readReg(MCP23018_DEFAULT_ADDRESS << 1, tx[0], &tx[0], 1, VOYAGER_I2C_TIMEOUT)) {
+        return true;
+    }
+    return false;
+}
+
 void matrix_init_custom(void) {
     // outputs
     setPinOutput(B10);
@@ -79,6 +97,16 @@ void matrix_init_custom(void) {
     setPinInputLow(B0);
 
     mcp23018_init();
+#ifdef RGB_MATRIX_ENABLE
+/*
+    if (led_driver_ready(DRIVER_ADDR_1)) {
+        led_driver_initd[0] = true;
+    }
+    if (led_driver_ready(DRIVER_ADDR_2)) {
+        led_driver_initd[0] = true;
+    }
+*/
+#endif
 }
 
 bool matrix_scan_custom(matrix_row_t current_matrix[]) {
@@ -87,27 +115,13 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
     if (!mcp23018_initd) {
         if (++mcp23018_reset_loop == 0) {
             // Since mcp23018_reset_loop is 8 bit - we'll try to reset once in 255 matrix scans. This will be approx bit more frequent than once per second.
-            mcp23018_init();
-            if (mcp23018_initd) {
+            if (io_expander_ready()) {
                 // If we managed to initialize the mcp23018 - we need to reinitialize the matrix / layer state.
-                matrix_init();
-                layer_state_set(0);
+                mcu_reset();
             }
         }
     }
 
-#ifdef RGB_MATRIX_ENABLE
-    // We also need to reinitialize the RGB matrix if it's enabled.
-    if (!IS31FL3731_initd) {
-        if (++is31fl3731_reset_loop == 0) {
-            IS31FL3731_init(DRIVER_ADDR_2);
-            if (IS31FL3731_initd) {
-                wait_ms(50);
-                rgb_matrix_init();
-            }
-        }
-    }
-#endif
     // Scanning left and right side of the keyboard for key presses.
     // Left side is scanned by reading the gpio pins directly, right side is scanned by reading the mcp23018 registers.
     // In order to give enought time between selecting rows over i2c and reading the columns, we're scanning the left side first between the two i2c transactions.
@@ -146,6 +160,7 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
 
             if (MSG_OK != i2c_transmit(MCP23018_DEFAULT_ADDRESS << 1, mcp23018_tx, 3, VOYAGER_I2C_TIMEOUT)) {
                 mcp23018_initd = false;
+                return true;
             }
         }
         // Reading the left side of the keyboard.

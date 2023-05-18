@@ -24,6 +24,7 @@ EEPROM_DRIVER = vendor
 MOUSE_SHARED_EP = no
 LTO_ENABLE = no
 DFU_SUFFIX_ARGS = -v 3297 -p 0791
+DEBUG_ENABLE = yes
 
 #project specific files
 SRC += matrix.c
