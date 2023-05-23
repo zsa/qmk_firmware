@@ -160,7 +160,6 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
 
             if (MSG_OK != i2c_transmit(MCP23018_DEFAULT_ADDRESS << 1, mcp23018_tx, 3, VOYAGER_I2C_TIMEOUT)) {
                 mcp23018_initd = false;
-                return true;
             }
         }
         // Reading the left side of the keyboard.
@@ -212,8 +211,10 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
             if (MSG_OK != i2c_readReg(MCP23018_DEFAULT_ADDRESS << 1, mcp23018_tx[0], &mcp23018_rx[0], 1, VOYAGER_I2C_TIMEOUT)) {
                 mcp23018_initd = false;
             }
-
             data = ~(mcp23018_rx[0] & 0b00111111);
+            for (uint16_t i = 0; i < 500; i++) {
+                __asm__("nop");
+            }
         } else {
             data = 0;
         }
