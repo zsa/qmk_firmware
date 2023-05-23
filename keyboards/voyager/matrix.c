@@ -60,16 +60,6 @@ void mcp23018_init(void) {
     }
 }
 
-bool led_driver_initd[2] = {false, false};
-
-bool led_driver_ready(uint8_t addr) {
-    uint8_t tx[1] = {0x00};
-    if (MSG_OK == i2c_readReg(addr << 1, tx[0], &tx[0], 1, VOYAGER_I2C_TIMEOUT)) {
-        return true;
-    }
-    return false;
-}
-
 bool io_expander_ready(void) {
     uint8_t tx[1] = {0x13};
     if (MSG_OK == i2c_readReg(MCP23018_DEFAULT_ADDRESS << 1, tx[0], &tx[0], 1, VOYAGER_I2C_TIMEOUT)) {
@@ -97,16 +87,6 @@ void matrix_init_custom(void) {
     setPinInputLow(B0);
 
     mcp23018_init();
-#ifdef RGB_MATRIX_ENABLE
-/*
-    if (led_driver_ready(DRIVER_ADDR_1)) {
-        led_driver_initd[0] = true;
-    }
-    if (led_driver_ready(DRIVER_ADDR_2)) {
-        led_driver_initd[0] = true;
-    }
-*/
-#endif
 }
 
 bool matrix_scan_custom(matrix_row_t current_matrix[]) {
@@ -116,7 +96,8 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
         if (++mcp23018_reset_loop == 0) {
             // Since mcp23018_reset_loop is 8 bit - we'll try to reset once in 255 matrix scans. This will be approx bit more frequent than once per second.
             if (io_expander_ready()) {
-                // If we managed to initialize the mcp23018 - we need to reinitialize the matrix / layer state.
+                // If we managed to initialize the mcp23018 - we need to reinitialize the matrix / layer state. During an electric discharge the i2c peripherals might be in a weird state. Giving a delay and resetting the MCU allows to recover from this.
+                wait_ms(200);
                 mcu_reset();
             }
         }
@@ -124,7 +105,7 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
 
     // Scanning left and right side of the keyboard for key presses.
     // Left side is scanned by reading the gpio pins directly, right side is scanned by reading the mcp23018 registers.
-    // In order to give enought time between selecting rows over i2c and reading the columns, we're scanning the left side first between the two i2c transactions.
+
     matrix_row_t data = 0;
     for (uint8_t row = 0; row <= ROWS_PER_HAND; row++) {
         // strobe row
@@ -203,7 +184,7 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
 
         // Reading the right side of the keyboard.
         if (mcp23018_initd) {
-            for (uint16_t i = 0; i < 500; i++) {
+            for (uint16_t i = 0; i < IO_EXPANDER_OP_DELAY; i++) {
                 __asm__("nop");
             }
 
@@ -212,7 +193,7 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
                 mcp23018_initd = false;
             }
             data = ~(mcp23018_rx[0] & 0b00111111);
-            for (uint16_t i = 0; i < 500; i++) {
+            for (uint16_t i = 0; i < IO_EXPANDER_OP_DELAY; i++) {
                 __asm__("nop");
             }
         } else {

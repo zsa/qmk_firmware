@@ -26,7 +26,6 @@ extern bool mcp23018_leds[];
 
 #define VY_LED_1(status) writePin(B5, (bool)status)
 #define VY_LED_2(status) writePin(B4, (bool)status)
-
 #define VY_LED_3(status) mcp23018_leds[0] = (bool)status
 #define VY_LED_4(status) mcp23018_leds[1] = (bool)status
 
@@ -54,7 +53,6 @@ extern bool mcp23018_leds[];
     { KC_NO, KC_NO, KC_NO, KC_NO, KC_NO, k50, k51 }, \
 }
 // clang-format on
-
 enum voyager_keycodes {
     TOGGLE_LAYER_COLOR = SAFE_RANGE,
     LED_LEVEL,

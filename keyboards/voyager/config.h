@@ -140,4 +140,9 @@
 #define MOUSEKEY_WHEEL_TIME_TO_MAX MOUSEKEY_TIME_TO_MAX
 
 #define TAPPING_TOGGLE 1
+
+// When using the Ignition bootloader, the app address is offset by 8k
 #define APP_ADDRESS 0x08002000
+
+// Delay between each i2c io expander ops (in MCU cycles)
+#define IO_EXPANDER_OP_DELAY 500
