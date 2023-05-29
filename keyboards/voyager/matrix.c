@@ -224,10 +224,10 @@ void matrix_power_up(void) {
 
     is_launching = temp_launching;
     if (!temp_launching) {
-        VY_LED_1(false);
-        VY_LED_2(false);
-        VY_LED_3(false);
-        VY_LED_4(false);
+        STATUS_LED_1(false);
+        STATUS_LED_2(false);
+        STATUS_LED_3(false);
+        STATUS_LED_4(false);
     }
 
     // initialize matrix state: all keys off

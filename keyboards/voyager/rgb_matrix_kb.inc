@@ -11,8 +11,15 @@ static void oryx_webhid_effect_init(void) {
 
 static bool oryx_webhid_effect_run(effect_params_t* params) {
     RGB_MATRIX_USE_LIMITS(led_min, led_max);
-    for (uint8_t i = led_min; i < led_max; ++i) {
-        rgb_matrix_set_color(i, webhid_leds[i].r, webhid_leds[i].g, webhid_leds[i].b);
+    uint8_t val = rgb_matrix_get_val() * 100 / 175;
+    printf("val: %d\n", val);
+    if(val == 0) {
+      rgb_matrix_set_color_all(0, 0, 0);
+    } 
+    else {
+      for (uint8_t i = led_min; i < led_max; ++i) {
+        rgb_matrix_set_color(i, webhid_leds[i].r * val / 100, webhid_leds[i].g * val / 100, webhid_leds[i].b * val / 100);
+      }
     }
     return rgb_matrix_check_finished_leds(led_max);
 }

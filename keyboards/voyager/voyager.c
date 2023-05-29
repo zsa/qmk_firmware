@@ -21,7 +21,7 @@
 
 keyboard_config_t keyboard_config;
 
-bool mcp23018_leds[3] = {0, 0, 0};
+bool mcp23018_leds[2] = {0, 0};
 bool is_launching     = false;
 
 #ifdef DYNAMIC_MACRO_ENABLE
@@ -33,41 +33,42 @@ void dynamic_macro_record_start_user(void) {
 
 void dynamic_macro_record_end_user(int8_t direction) {
     is_dynamic_recording = false;
-    VY_LED_3(false);
+    STATUS_LED_3(false);
 }
 #endif
 
 void voyager_led_task(void) {
+    if (rawhid_state.rgb_control) return;
     if (is_launching) {
-        VY_LED_1(false);
-        VY_LED_2(false);
-        VY_LED_3(false);
-        VY_LED_4(false);
+        STATUS_LED_1(false);
+        STATUS_LED_2(false);
+        STATUS_LED_3(false);
+        STATUS_LED_4(false);
 
-        VY_LED_1(true);
+        STATUS_LED_1(true);
         wait_ms(250);
-        VY_LED_2(true);
+        STATUS_LED_2(true);
         wait_ms(250);
-        VY_LED_3(true);
+        STATUS_LED_3(true);
         wait_ms(250);
-        VY_LED_4(true);
+        STATUS_LED_4(true);
         wait_ms(250);
-        VY_LED_1(false);
+        STATUS_LED_1(false);
         wait_ms(250);
-        VY_LED_2(false);
+        STATUS_LED_2(false);
         wait_ms(250);
-        VY_LED_3(false);
+        STATUS_LED_3(false);
         wait_ms(250);
-        VY_LED_4(false);
+        STATUS_LED_4(false);
         wait_ms(250);
         is_launching = false;
         layer_state_set_kb(layer_state);
     }
 #ifdef DYNAMIC_MACRO_ENABLE
     else if (is_dynamic_recording) {
-        VY_LED_3(true);
+        STATUS_LED_3(true);
         wait_ms(100);
-        VY_LED_3(false);
+        STATUS_LED_3(false);
         wait_ms(155);
     }
 #endif
@@ -103,7 +104,7 @@ void keyboard_pre_init_kb(void) {
 #if !defined(VOYAGER_USER_LEDS)
 layer_state_t layer_state_set_kb(layer_state_t state) {
     state = layer_state_set_user(state);
-    if (is_launching || !keyboard_config.led_level) return state;
+    if (is_launching || !keyboard_config.led_level || rawhid_state.rgb_control) return state;
     bool LED_1 = false;
     bool LED_2 = false;
     bool LED_3 = false;
@@ -148,11 +149,11 @@ layer_state_t layer_state_set_kb(layer_state_t state) {
             break;
     }
 
-    VY_LED_1(LED_1);
-    VY_LED_2(LED_2);
-    VY_LED_3(LED_3);
+    STATUS_LED_1(LED_1);
+    STATUS_LED_2(LED_2);
+    STATUS_LED_3(LED_3);
 #    if !defined(CAPS_LOCK_STATUS)
-    VY_LED_4(LED_4);
+    STATUS_LED_4(LED_4);
 #    endif
     return state;
 }
@@ -194,32 +195,36 @@ const is31_led PROGMEM g_is31_leds[DRIVER_LED_TOTAL] = {
     {0, C8_13,  C7_13,  C9_13},
     {0, C8_14,  C7_14,  C9_14},
 
-    {1, C2_2,  C1_2,  C4_3},
-    {1, C2_3,  C1_3,  C3_3},
-    {1, C2_4,  C1_4,  C3_4},
-    {1, C2_5,  C1_5,  C3_5},
-    {1, C2_6,  C1_6,  C3_6},
     {1, C2_7,  C1_7,  C3_7},
-    {1, C2_8,  C1_8,  C3_8},
-    {1, C8_1,  C7_1,  C9_1},
-    {1, C8_2,  C7_2,  C9_2},
-    {1, C8_3,  C7_3,  C9_3},
-    {1, C8_4,  C7_4,  C9_4},
+    {1, C2_6,  C1_6,  C3_6},
+    {1, C2_5,  C1_5,  C3_5},
+    {1, C2_4,  C1_4,  C3_4},
+    {1, C2_3,  C1_3,  C3_3},
+    {1, C2_2,  C1_2,  C4_3},
+
     {1, C8_5,  C7_5,  C9_5},
-    {1, C8_6,  C7_6,  C9_6},
-    {1, C2_10,  C1_10,  C4_11},
-    {1, C2_11,  C1_11,  C3_11},
-    {1, C2_12,  C1_12,  C3_12},
-    {1, C2_13,  C1_13,  C3_13},
+    {1, C8_4,  C7_4,  C9_4},
+    {1, C8_3,  C7_3,  C9_3},
+    {1, C8_2,  C7_2,  C9_2},
+    {1, C8_1,  C7_1,  C9_1},
+    {1, C2_8,  C1_8,  C3_8},
+
     {1, C2_14,  C1_14,  C3_14},
-    {1, C2_15,  C1_15,  C3_15},
-    {1, C2_16,  C1_16,  C3_16},
-    {1, C8_9,  C7_9,  C9_9},
-    {1, C8_10,  C7_10,  C9_10},
-    {1, C8_11,  C7_11,  C9_11},
+    {1, C2_13,  C1_13,  C3_13},
+    {1, C2_12,  C1_12,  C3_12},
+    {1, C2_11,  C1_11,  C3_11},
+    {1, C2_10,  C1_10,  C4_11},
+    {1, C8_6,  C7_6,  C9_6},
+
     {1, C8_12,  C7_12,  C9_12},
-    {1, C8_13,  C7_13,  C9_13},
+    {1, C8_11,  C7_11,  C9_11},
+    {1, C8_10,  C7_10,  C9_10},
+    {1, C8_9,  C7_9,  C9_9},
+    {1, C2_16,  C1_16,  C3_16},
+    {1, C2_15,  C1_15,  C3_15},
+
     {1, C8_14,  C7_14,  C9_14},
+    {1, C8_13,  C7_13,  C9_13},
 };
 
 led_config_t g_led_config = { {
@@ -229,30 +234,31 @@ led_config_t g_led_config = { {
     {   NO_LED, 3,  8, 13, 18, 23, NO_LED },
     {   NO_LED,  NO_LED, NO_LED, NO_LED, 24, NO_LED, NO_LED },
     {  32, 33, NO_LED, NO_LED, NO_LED, NO_LED, NO_LED },
-    {  65, 61, 56, 51, 46, 41, NO_LED },
+    {  41, 46, 51, 56, 61, 65, NO_LED },
+    
     {  66, 62, 57, 52, 47, 42, NO_LED },
     {  67, 63, 58, 53, 48, 43, NO_LED },
     {  NO_LED, 64, 59, 54, 49, 44, NO_LED },
     {  NO_LED, NO_LED, 60, NO_LED, NO_LED, NO_LED, NO_LED },
     {  NO_LED, NO_LED, NO_LED, NO_LED, NO_LED, 69, 68 },
 }, {
-    {   0,   0 }, {   0,  12 }, {   0,  25 }, {   0,  38 }, {   0,  51 },
-    {  17,   0 }, {  17,  12 }, {  17,  25 }, {  17,  38 }, {  17,  51 },
-    {  34,   0 }, {  34,  12 }, {  34,  25 }, {  34,  38 }, {  34,  51 },
-    {  51,   0 }, {  51,  12 }, {  51,  25 }, {  51,  38 }, {  51,  51 },
-    {  68,   0 }, {  68,  12 }, {  68,  25 }, {  68,  38 }, {  68,  51 },
-    {  86,   0 }, {  86,  12 }, {  86,  25 }, {  86,  38 },
-    { 105,   0 }, { 105,  12 }, { 105,  25 },
-    {  90,  55 }, { 105,  68 }, { 116,  86 }, { 116, 59 },
+    {  0,   4}, {  0,  20}, {  0,  36}, {  0, 52}, {  0,  68},
+    { 16,   3}, { 16,  19}, { 16,  35}, { 16, 51}, { 16,  67},
+    { 32,   1}, { 32,  17}, { 32,  33}, { 32, 49}, { 32,  65},
+    { 48,   0}, { 48,  16}, { 48,  32}, { 48, 48}, { 48,  64},
+    { 64,   1}, { 64,  17}, { 64,  33}, { 64, 49}, { 64,  65},
+    { 80,   3}, { 80,  19}, { 80,  35}, { 80, 51}, { 96,   4},
+    { 96,  20}, { 96,  36}, { 88,  69}, {100,  80}, {112,  91},
+    {108, 69},
 
-    { 250,   0 }, { 250,  12 }, { 250,  25 }, { 250,  38 }, { 250,  51 },
-    { 233,   0 }, { 233,  12 }, { 233,  25 }, { 233,  38 }, { 233,  51 },
-    { 216,   0 }, { 216,  12 }, { 216,  25 }, { 216,  38 }, { 216,  51 },
-    { 198,   0 }, { 198,  12 }, { 198,  25 }, { 198,  38 }, { 198,  51 },
-    { 181,   0 }, { 181,  12 }, { 181,  25 }, { 181,  38 }, { 181,  51 },
-    { 163,   0 }, { 163,  12 }, { 163,  25 }, { 163,  38 },
-    { 146,   0 }, { 146,  12 }, { 146,  25 },
-    { 161,  55 }, { 161,  68 }, { 146,  86 }, { 131, 59 }
+    {240,   4}, {240,  20}, {240,  36}, {240,  52}, {240,  68},
+    {224,   3}, {224,  19}, {224,  35}, {224,  51}, {224,  67},
+    {208,   1}, {208,  17}, {208,  33}, {208,  49}, {208,  65},
+    {192,   0}, {192,  16}, {192,  32}, {192,  48}, {192,  64},
+    {176,   1}, {176,  17}, {176,  33}, {176,  49}, {176,  65},
+    {160,   3}, {160,  19}, {160,  35}, {160,  51}, {144,   4},
+    {144,  20}, {144,  36}, {152,  69}, {140,  80}, {128,  91},
+    {132,  69}
 
 }, {
     1, 1, 1, 1, 1, 4,
@@ -270,22 +276,6 @@ led_config_t g_led_config = { {
 } };
 // clang-format on
 
-#endif
-
-#ifdef AUDIO_ENABLE
-bool music_mask_kb(uint16_t keycode) {
-    switch (keycode) {
-        case QK_LAYER_TAP ... QK_ONE_SHOT_LAYER_MAX:
-        case QK_LAYER_TAP_TOGGLE ... QK_LAYER_MOD_MAX:
-        case QK_MOD_TAP ... QK_MOD_TAP_MAX:
-        case AU_ON ... MUV_DE:
-        case QK_BOOT:
-        case EEP_RST:
-            return false;
-        default:
-            return music_mask_user(keycode);
-    }
-}
 #endif
 
 #ifdef SWAP_HANDS_ENABLE
@@ -319,7 +309,7 @@ void keyboard_post_init_kb(void) {
 bool led_update_kb(led_t led_state) {
     bool res = led_update_user(led_state);
     if (res) {
-        VY_LED_6(led_state.caps_lock);
+        STATUS_LED_4(led_state.caps_lock);
     }
     return res;
 }
@@ -338,10 +328,10 @@ bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
                 if (keyboard_config.led_level) {
                     layer_state_set_kb(layer_state);
                 } else {
-                    VY_LED_1(false);
-                    VY_LED_2(false);
-                    VY_LED_3(false);
-                    VY_LED_4(false);
+                    STATUS_LED_1(false);
+                    STATUS_LED_2(false);
+                    STATUS_LED_3(false);
+                    STATUS_LED_4(false);
                 }
             }
             break;
