@@ -12,7 +12,6 @@ static void oryx_webhid_effect_init(void) {
 static bool oryx_webhid_effect_run(effect_params_t* params) {
     RGB_MATRIX_USE_LIMITS(led_min, led_max);
     uint8_t val = rgb_matrix_get_val() * 100 / 175;
-    printf("val: %d\n", val);
     if(val == 0) {
       rgb_matrix_set_color_all(0, 0, 0);
     } 
