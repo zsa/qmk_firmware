@@ -137,11 +137,15 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
             }
             break;
         case ORYX_UPDATE_BRIGHTNESS:
+#if defined(RGB_MATRIX_ENABLE) && !defined(KEYBOARD_ergodox_ez_glow)
             if (param[0]) {
                 rgb_matrix_increase_val_noeeprom();
             } else {
                 rgb_matrix_decrease_val_noeeprom();
             }
+#else
+            oryx_error(ORYX_ERR_RGB_MATRIX_NOT_ENABLED);
+#endif
             break;
         default:
             oryx_error(ORYX_ERR_UNKNOWN_COMMAND);
