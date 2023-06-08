@@ -89,6 +89,11 @@ static THD_FUNCTION(LEDThread, arg) {
 }
 
 void keyboard_pre_init_kb(void) {
+    // Initialize Reset pins
+    setPinInput(A8);
+    setPinOutput(A9);
+    writePinLow(A9);
+
     setPinOutput(B5);
     setPinOutput(B4);
     setPinOutput(B3);

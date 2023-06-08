@@ -19,24 +19,27 @@
 #include <ch.h>
 #include <hal.h>
 #include "wait.h"
+#include "gpio.h"
 
-extern uint32_t __ram0_end__;
-
-/* This code should be checked whether it runs correctly on platforms */
-#define SYMVAL(sym) (uint32_t)(((uint8_t *)&(sym)) - ((uint8_t *)0))
-#define BOOTLOADER_MAGIC 0xDEADBEEF
-#define MAGIC_ADDR (unsigned long *)(SYMVAL(__ram0_end__) - 4)
+#define APP_ADDRESS 0x08002000
 
 __attribute__((weak)) void bootloader_jump(void) {
-    *MAGIC_ADDR = BOOTLOADER_MAGIC; // set magic flag => reset handler will jump into boot loader
+    // The ignition bootloader is checking for a high signal on A8 for 100ms when powering on the board.
+    // Setting both A8 and A9 high will charge the capacitor quickly.
+    // Setting A9 low before reset will cause the capacitor to discharge
+    // thus making the bootloder unlikely to trigger twice between power cycles.
+    setPinOutputPushPull(A9);
+    setPinOutputPushPull(A8);
+    writePinHigh(A9);
+    writePinHigh(A8);
+    wait_ms(500);
+    writePinLow(A9);
+
     NVIC_SystemReset();
 }
 
 __attribute__((weak)) void mcu_reset(void) {
-#ifdef GD32
-    NVIC_SystemReset();
-#endif
-#ifndef GD32
+    // When resetting the MCU, we want to jump to the application.
     SCB->AIRCR = APP_ADDRESS & 0xFFFF;
 
     // Set the stack pointer to the applications stack pointer
@@ -46,21 +49,6 @@ __attribute__((weak)) void mcu_reset(void) {
     (*(void (**)())(APP_ADDRESS + 4))();
     while (1)
         ;
-#endif
 }
 
-void enter_bootloader_mode_if_requested(void) {
-    unsigned long *check = MAGIC_ADDR;
-    if (*check == BOOTLOADER_MAGIC) {
-        *check = 0;
-        __set_CONTROL(0);
-        __set_MSP(*(__IO uint32_t *)STM32_BOOTLOADER_ADDRESS);
-        __enable_irq();
-
-        typedef void (*BootJump_t)(void);
-        BootJump_t boot_jump = *(BootJump_t *)(STM32_BOOTLOADER_ADDRESS + 4);
-        boot_jump();
-        while (1)
-            ;
-    }
-}
+__attribute__((weak)) void enter_bootloader_mode_if_requested(void) {}
