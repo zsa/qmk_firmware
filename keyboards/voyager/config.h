@@ -42,7 +42,9 @@
 #define DIODE_DIRECTION ROW2COL
 
 /* Set 0 if debouncing isn't needed */
-#define DEBOUNCE 5
+#ifndef DEBOUNCE
+#    define DEBOUNCE 5
+#endif
 
 /* Mechanical locking support. Use KC_LCAP, KC_LNUM or KC_LSCR instead in keymap */
 #define LOCKING_SUPPORT_ENABLE
@@ -56,14 +58,6 @@
 
 /* disable debug print */
 // #define NO_DEBUG
-
-/* disable print */
-// #define NO_PRINT
-
-/* disable action features */
-// #define NO_ACTION_LAYER
-// #define NO_ACTION_TAPPING
-// #define NO_ACTION_ONESHOT
 
 #define DRIVER_ADDR_1 0b1110100
 #define DRIVER_ADDR_2 0b1110111
@@ -127,8 +121,9 @@
 #define ENABLE_RGB_MATRIX_SOLID_SPLASH
 #define ENABLE_RGB_MATRIX_SOLID_MULTISPLASH
 
-// #define RGB_MATRIX_LED_PROCESS_LIMIT 5
-// #define RGB_MATRIX_LED_FLUSH_LIMIT 26
+#ifndef ISSI_TIMEOUT
+#    define ISSI_TIMEOUT 5
+#endif
 
 #define MOUSEKEY_INTERVAL 20
 #define MOUSEKEY_DELAY 0
