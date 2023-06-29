@@ -31,7 +31,8 @@
  * Board frequencies.
  */
 #define STM32_LSECLK 32768
-#define STM32_HSECLK 8000000
+//#define STM32_HSECLK 8000000
+#define STM32_HSECLK 10800000 // ~ 98Mhz
 
 /*
  * MCU type, supported types are defined in ./os/hal/platforms/hal_lld.h.
