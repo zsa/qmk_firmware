@@ -4,10 +4,8 @@
 	branch = master
 [submodule "lib/chibios-contrib"]
 	path = lib/chibios-contrib
-#	url = https://github.com/qmk/ChibiOS-Contrib
-#	branch = master
-	url = ssh://git@oryx.zsa.io:2255/home/git/chibios-contrib.git
-	branch = feat/gd32fport
+	url = https://github.com/zsa/ChibiOS-Contrib
+	branch = main
 [submodule "lib/googletest"]
 	path = lib/googletest
 	url = https://github.com/qmk/googletest
