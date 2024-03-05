@@ -85,6 +85,9 @@
  */
 
 #ifndef NO_ACTION_LAYER
+/** Returns true if a layer is currently locked. */
+bool are_any_layer_locked(void);
+
 /** Returns true if `layer` is currently locked. */
 bool is_layer_locked(uint8_t layer);
 

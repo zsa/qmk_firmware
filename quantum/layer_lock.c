@@ -31,6 +31,11 @@ void layer_lock_task(void) {
 }
 #    endif // LAYER_LOCK_IDLE_TIMEOUT > 0
 
+bool are_any_layer_locked(void) {
+    return locked_layers != 0;
+}
+
+
 bool is_layer_locked(uint8_t layer) {
     return locked_layers & ((layer_state_t)1 << layer);
 }
