@@ -1,0 +1,45 @@
+name: Build firmware
+on:
+  push:
+    paths-ignore:
+      - '**.md'
+  pull_request:
+    paths-ignore:
+      - '**.md'
+  workflow_dispatch:
+
+
+jobs:
+  build-firmware:
+    runs-on: ubuntu-latest
+    container: qmkfm/qmk_cli
+    strategy:
+      fail-fast: false
+      matrix:
+        keyboard:
+          - zsa/ergodox_ez/m32u4/base
+          - zsa/ergodox_ez/m32u4/shine
+          - zsa/ergodox_ez/m32u4/glow
+          - zsa/ergodox_ez/stm32/base
+          - zsa/ergodox_ez/stm32/shine
+          - zsa/ergodox_ez/stm32/glow
+          - zsa/moonlander
+          - /zsa/planck_ez/base
+          - /zsa/planck_ez/glow
+          - zsa/voyager
+        keymap:
+          - default
+          - oryx
+
+    steps:
+    - name: Checkout QMK Firmware
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+        persist-credentials: false
+        submodules: true
+
+    - name: Build
+      id: build
+      run: |
+        qmk compile -kb ${{ matrix.keyboard}} -km ${{ matrix.keymap }}
