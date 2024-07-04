@@ -13,23 +13,6 @@ jobs:
   build-firmware:
     runs-on: ubuntu-latest
     container: qmkfm/qmk_cli
-    strategy:
-      fail-fast: false
-      matrix:
-        keyboard:
-          - zsa/ergodox_ez/m32u4/base
-          - zsa/ergodox_ez/m32u4/shine
-          - zsa/ergodox_ez/m32u4/glow
-          - zsa/ergodox_ez/stm32/base
-          - zsa/ergodox_ez/stm32/shine
-          - zsa/ergodox_ez/stm32/glow
-          - zsa/moonlander
-          - /zsa/planck_ez/base
-          - /zsa/planck_ez/glow
-          - zsa/voyager
-        keymap:
-          - default
-          - oryx
 
     steps:
     - name: Checkout QMK Firmware
@@ -42,4 +25,4 @@ jobs:
     - name: Build
       id: build
       run: |
-        qmk compile -kb ${{ matrix.keyboard}} -km ${{ matrix.keymap }}
+        qmk mass-compile -f manufacturer="ZSA Technology Labs" -km default
