@@ -24,6 +24,10 @@ void send_report(uint8_t endpoint, void *report, size_t size);
 bool send_report(usb_endpoint_in_lut_t endpoint, void *report, size_t size);
 #endif
 
+#ifdef RGB_MATRIX_ENABLE
+RGB webhid_leds[RGB_MATRIX_LED_COUNT];
+#endif
+
 void raw_hid_send_oryx(uint8_t *data, uint8_t length) {
     if (length != RAW_EPSIZE) {
         return;

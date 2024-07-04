@@ -91,5 +91,5 @@ void layer_state_set_oryx(layer_state_t state);
 
 
 #if defined(RGB_MATRIX_ENABLE) && !defined(KEYBOARD_ergodox_ez_glow)
-RGB webhid_leds[RGB_MATRIX_LED_COUNT];
+extern RGB webhid_leds[RGB_MATRIX_LED_COUNT];
 #endif
