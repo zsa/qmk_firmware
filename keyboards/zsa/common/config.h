@@ -4,7 +4,7 @@
 #pragma once
 
 #ifdef ORYX_ENABLE
-#    ifndef FIRWMARE_VERSION
+#    ifndef FIRMWARE_VERSION
 #        define FIRMWARE_VERSION u8"default/latest"
 #    endif // FIRMWARE_VERSION
 #    ifndef RAW_USAGE_PAGE

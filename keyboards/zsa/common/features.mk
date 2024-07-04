@@ -7,4 +7,5 @@ ifeq ($(strip $(ORYX_ENABLE)), yes)
     RAW_ENABLE := yes
     VIA_ENABLE := no
     RGB_MATRIX_CUSTOM_KB = yes
+else
 endif

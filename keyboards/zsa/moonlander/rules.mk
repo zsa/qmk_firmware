@@ -5,4 +5,3 @@ SRC += matrix.c mcp23018.c
 I2C_DRIVER_REQUIRED = yes
 
 MCU_LDSCRIPT = STM32F303xB
-include keyboards/zsa/common/features.mk

@@ -8,5 +8,3 @@ DFU_SUFFIX_ARGS = -v 3297 -p 0791
 VPATH += drivers/gpio
 SRC += matrix.c mcp23018.c
 I2C_DRIVER_REQUIRED = yes
-
-include keyboards/zsa/common/features.mk
