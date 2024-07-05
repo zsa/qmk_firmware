@@ -87,10 +87,10 @@ static void    send_mouse(report_mouse_t *report);
 static void    send_extra(report_extra_t *report);
 host_driver_t  lufa_driver = {keyboard_leds, send_keyboard, send_nkro, send_mouse, send_extra};
 
-void send_report(uint8_t endpoint, void *report, size_t size) {
+bool send_report(uint8_t endpoint, void *report, size_t size) {
     uint8_t timeout = 255;
 
-    if (USB_DeviceState != DEVICE_STATE_Configured) return;
+    if (USB_DeviceState != DEVICE_STATE_Configured) return false;
 
     Endpoint_SelectEndpoint(endpoint);
 
@@ -98,10 +98,11 @@ void send_report(uint8_t endpoint, void *report, size_t size) {
     while (timeout-- && !Endpoint_IsReadWriteAllowed()) {
         _delay_us(40);
     }
-    if (!Endpoint_IsReadWriteAllowed()) return;
+    if (!Endpoint_IsReadWriteAllowed()) return false;
 
-    Endpoint_Write_Stream_LE(report, size, NULL);
+    uint8_t report_status = Endpoint_Write_Stream_LE(report, size, NULL);
     Endpoint_ClearIN();
+    return (bool)report_status;
 }
 
 #ifdef VIRTSER_ENABLE

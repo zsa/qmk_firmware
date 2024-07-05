@@ -16,7 +16,8 @@ rawhid_state_t rawhid_state = {
 uint8_t pairing_input_index = 0;
 
 #if defined(PROTOCOL_LUFA)
-void send_report(uint8_t endpoint, void *report, size_t size);
+bool send_report(uint8_t endpoint, void *report, size_t size);
+#include "usb_descriptor.h"
 #    define RAW_EP_NAME RAW_IN_EPNUM
 #elif defined(PROTOCOL_CHIBIOS)
 #    include "usb_endpoints.h"
