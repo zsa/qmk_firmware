@@ -94,8 +94,8 @@ void keyboard_pre_init_kb(void) {
 }
 
 layer_state_t layer_state_set_kb(layer_state_t state) {
-#if !defined(VOYAGER_USER_LEDS)
     state = layer_state_set_user(state);
+#if !defined(VOYAGER_USER_LEDS)
     if (is_launching || !keyboard_config.led_level) return state;
 #    ifdef ORYX_ENABLE
     if (rawhid_state.status_led_control) return state;
