@@ -40,6 +40,9 @@
             "resync": true
         }
     },
+    "tapping": {
+        "toggle": 1
+    },
     "rgb_matrix": {
         "driver": "is31fl3731",
         "led_flush_limit": 26,

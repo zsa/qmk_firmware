@@ -177,6 +177,9 @@
     "layout_aliases": {
         "LAYOUT_moonlander": "LAYOUT"
     },
+    "tapping": {
+        "toggle": 1
+    },
     "layouts": {
         "LAYOUT": {
             "layout": [
