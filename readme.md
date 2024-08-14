@@ -1,3 +1,9 @@
+qmk compile -kb ergodox_ez -km oatmeal
+file "ergodox_ez_base_oatmeal.hex" will appear in \home\me\github\qmk_firmware
+
+
+
+
 # ZSA's fork of QMK Firmware
 
 [![Current Version](https://img.shields.io/github/tag/zsa/qmk_firmware.svg)](https://github.com/zsa/qmk_firmware/tags)
