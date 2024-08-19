@@ -38,6 +38,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // If not, then only define 15
 #    define RGBLIGHT_LED_COUNT 15 // Number of LEDs
 #endif
+#define WS2812_LED_COUNT RGBLIGHT_LED_COUNT
 
 #ifndef ISSI_TIMEOUT
 #    define ISSI_TIMEOUT 3

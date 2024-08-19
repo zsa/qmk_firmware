@@ -80,6 +80,9 @@
         "saturation_steps": 255,
         "sleep": true
     },
+    "ws2812": {
+        "rgbw": true
+    },
     "tapping": {
         "toggle": 1
     },

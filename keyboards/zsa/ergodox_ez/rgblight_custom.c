@@ -18,23 +18,23 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifdef RGBLIGHT_ENABLE
 #    include "ergodox_ez.h"
+#    include "ws2812.h"
 
-void rgblight_call_driver(rgb_led_t *led, uint8_t led_num) {
+void setleds_custom(rgb_led_t *led, uint16_t led_num) {
     uint16_t length = 0;
-    uint8_t  i      = 0;
-    uint8_t  j      = 0;
-#    ifdef RGBW
-    const uint8_t bytes_per_led = 4;
+    int      i      = 0;
+    int      j      = 0;
+#    ifdef WS2812_RGBW
+    int bytes_per_led = 4;
 #    else
-    const uint8_t bytes_per_led = 3;
+    int bytes_per_led = 3;
 #    endif
 #    if defined(ERGODOX_LED_30)
     // prevent right-half code from trying to bitbang all 30
     // so with 30 LEDs, we count from 29 to 15 here, and the
     // other half does 0 to 14.
-    uint8_t half_led_num = RGBLED_NUM / 2;
+    uint8_t half_led_num = WS2812_LED_COUNT / 2;
     length               = half_led_num * bytes_per_led;
     uint8_t data[length];
     for (i = half_led_num + half_led_num - 1; i >= half_led_num; --i)
@@ -52,7 +52,7 @@ void rgblight_call_driver(rgb_led_t *led, uint8_t led_num) {
         data[j++]          = data_byte[0];
         data[j++]          = data_byte[1];
         data[j++]          = data_byte[2];
-#    ifdef RGBW
+#    ifdef WS2812_RGBW
         data[j++] = data_byte[3];
 #    endif
     }
@@ -61,4 +61,7 @@ void rgblight_call_driver(rgb_led_t *led, uint8_t led_num) {
     ws2812_setleds(led, led_num);
 }
 
-#endif // RGBLIGHT_ENABLE
+const rgblight_driver_t rgblight_driver = {
+    .init    = ws2812_init,
+    .setleds = setleds_custom,
+};
