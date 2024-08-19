@@ -19,10 +19,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifdef RGBLIGHT_ENABLE
-
 #    include "ergodox_ez.h"
 
-void rgblight_call_driver(LED_TYPE *led, uint8_t led_num) {
+void rgblight_call_driver(rgb_led_t *led, uint8_t led_num) {
     uint16_t length = 0;
     uint8_t  i      = 0;
     uint8_t  j      = 0;

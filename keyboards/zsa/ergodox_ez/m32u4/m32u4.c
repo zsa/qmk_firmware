@@ -21,12 +21,11 @@ void keyboard_post_init_sub(void) {
     // (tied to Vcc for hardware convenience)
     setPinInput(B4);
 
-    // unused pins - C7, D4, D5, D7, E6
+    // unused pins - C7, D4, D5, E6
     // set as input with internal pull-up enabled
     setPinInputHigh(C7);
     setPinInputHigh(D4);
     setPinInputHigh(D5);
-    setPinInputHigh(D7);
     setPinInputHigh(E6);
 
     setPinOutput(ERGODOX_LED_1_PIN);

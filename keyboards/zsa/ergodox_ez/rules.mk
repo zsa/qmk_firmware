@@ -2,7 +2,7 @@
 CUSTOM_MATRIX = lite
 
 #project specific files
-SRC += matrix.c
+SRC += matrix.c led_i2c.c
 I2C_DRIVER_REQUIRED = yes
 
 MOUSE_SHARED_EP = no
