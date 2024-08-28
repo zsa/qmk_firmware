@@ -7,7 +7,9 @@
 #include "debug.h"
 
 #define SLAVE_TO_ADDR(n) (n << 1)
-#define TIMEOUT 100
+#ifndef MCP23018_TIMEOUT
+#    define MCP23018_TIMEOUT 100
+#endif // MCP23018_TIMEOUT
 
 enum {
     CMD_IODIRA = 0x00, // i/o direction register
@@ -33,13 +35,13 @@ bool mcp23018_set_config(uint8_t slave_addr, mcp23018_port_t port, uint8_t conf)
     uint8_t cmdDirection = port ? CMD_IODIRB : CMD_IODIRA;
     uint8_t cmdPullup    = port ? CMD_GPPUB : CMD_GPPUA;
 
-    i2c_status_t ret = i2c_write_register(addr, cmdDirection, &conf, sizeof(conf), TIMEOUT);
+    i2c_status_t ret = i2c_write_register(addr, cmdDirection, &conf, sizeof(conf), MCP23018_TIMEOUT);
     if (ret != I2C_STATUS_SUCCESS) {
         dprintf("mcp23018_set_config::directionFAILED::%u\n", ret);
         return false;
     }
 
-    ret = i2c_write_register(addr, cmdPullup, &conf, sizeof(conf), TIMEOUT);
+    ret = i2c_write_register(addr, cmdPullup, &conf, sizeof(conf), MCP23018_TIMEOUT);
     if (ret != I2C_STATUS_SUCCESS) {
         dprintf("mcp23018_set_config::pullupFAILED::%u\n", ret);
         return false;
@@ -52,7 +54,7 @@ bool mcp23018_set_output(uint8_t slave_addr, mcp23018_port_t port, uint8_t conf)
     uint8_t addr = SLAVE_TO_ADDR(slave_addr);
     uint8_t cmd  = port ? CMD_GPIOB : CMD_GPIOA;
 
-    i2c_status_t ret = i2c_write_register(addr, cmd, &conf, sizeof(conf), TIMEOUT);
+    i2c_status_t ret = i2c_write_register(addr, cmd, &conf, sizeof(conf), MCP23018_TIMEOUT);
     if (ret != I2C_STATUS_SUCCESS) {
         dprintf("mcp23018_set_output::FAILED::%u\n", ret);
         return false;
@@ -65,7 +67,7 @@ bool mcp23018_set_output_all(uint8_t slave_addr, uint8_t confA, uint8_t confB) {
     uint8_t addr    = SLAVE_TO_ADDR(slave_addr);
     uint8_t conf[2] = {confA, confB};
 
-    i2c_status_t ret = i2c_write_register(addr, CMD_GPIOA, &conf[0], sizeof(conf), TIMEOUT);
+    i2c_status_t ret = i2c_write_register(addr, CMD_GPIOA, &conf[0], sizeof(conf), MCP23018_TIMEOUT);
     if (ret != I2C_STATUS_SUCCESS) {
         dprintf("mcp23018_set_output::FAILED::%u\n", ret);
         return false;
@@ -78,7 +80,7 @@ bool mcp23018_read_pins(uint8_t slave_addr, mcp23018_port_t port, uint8_t* out) 
     uint8_t addr = SLAVE_TO_ADDR(slave_addr);
     uint8_t cmd  = port ? CMD_GPIOB : CMD_GPIOA;
 
-    i2c_status_t ret = i2c_read_register(addr, cmd, out, sizeof(uint8_t), TIMEOUT);
+    i2c_status_t ret = i2c_read_register(addr, cmd, out, sizeof(uint8_t), MCP23018_TIMEOUT);
     if (ret != I2C_STATUS_SUCCESS) {
         dprintf("mcp23018_read_pins::FAILED::%u\n", ret);
         return false;
@@ -97,7 +99,7 @@ bool mcp23018_read_pins_all(uint8_t slave_addr, uint16_t* out) {
 
     data16 data = {.u16 = 0};
 
-    i2c_status_t ret = i2c_read_register(addr, CMD_GPIOA, &data.u8[0], sizeof(data), TIMEOUT);
+    i2c_status_t ret = i2c_read_register(addr, CMD_GPIOA, &data.u8[0], sizeof(data), MCP23018_TIMEOUT);
     if (ret != I2C_STATUS_SUCCESS) {
         dprintf("mcp23018_read_pins_all::FAILED::%u\n", ret);
         return false;
