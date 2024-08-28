@@ -31,7 +31,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 extern i2c_status_t mcp23018_status;
 
 #ifndef ERGODOX_EZ_I2C_TIMEOUT
-#    define ERGODOX_EZ_I2C_TIMEOUT 80
+#    define ERGODOX_EZ_I2C_TIMEOUT 10
 #endif
 #ifndef MCP23018_EXPANDER_I2C_ADDR
 #    define MCP23018_EXPANDER_I2C_ADDR (0x20 << 1)

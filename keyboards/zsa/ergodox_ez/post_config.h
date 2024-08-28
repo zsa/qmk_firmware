@@ -40,6 +40,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #endif
 #define WS2812_LED_COUNT RGBLIGHT_LED_COUNT
 
-#ifndef ISSI_TIMEOUT
-#    define ISSI_TIMEOUT 3
+#ifndef IS31FL3731_I2C_TIMEOUT
+#    define IS31FL3731_I2C_TIMEOUT 3
 #endif
