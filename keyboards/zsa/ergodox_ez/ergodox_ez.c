@@ -55,14 +55,17 @@ void ergodox_board_led_on(void) {
 }
 
 __attribute__((weak)) void ergodox_right_led_1_on(void) {
+    gpio_set_pin_output(ERGODOX_LED_1_PIN);
     gpio_write_pin_high(ERGODOX_LED_1_PIN);
 }
 
 __attribute__((weak)) void ergodox_right_led_2_on(void) {
+    gpio_set_pin_output(ERGODOX_LED_2_PIN);
     gpio_write_pin_high(ERGODOX_LED_2_PIN);
 }
 
 __attribute__((weak)) void ergodox_right_led_3_on(void) {
+    gpio_set_pin_output(ERGODOX_LED_3_PIN);
     gpio_write_pin_high(ERGODOX_LED_3_PIN);
 }
 
@@ -77,14 +80,17 @@ void ergodox_board_led_off(void) {
 }
 
 __attribute__((weak)) void ergodox_right_led_1_off(void) {
+    gpio_set_pin_input(ERGODOX_LED_1_PIN);
     gpio_write_pin_low(ERGODOX_LED_1_PIN);
 }
 
 __attribute__((weak)) void ergodox_right_led_2_off(void) {
+    gpio_set_pin_input(ERGODOX_LED_2_PIN);
     gpio_write_pin_low(ERGODOX_LED_2_PIN);
 }
 
 __attribute__((weak)) void ergodox_right_led_3_off(void) {
+    gpio_set_pin_input(ERGODOX_LED_3_PIN);
     gpio_write_pin_low(ERGODOX_LED_3_PIN);
 }
 
