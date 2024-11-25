@@ -20,19 +20,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "ergodox_ez.h"
 #include "bootmagic.h"
+#include "gpio.h"
 
 keyboard_config_t keyboard_config;
 
 __attribute__((weak)) void keyboard_post_init_sub(void) {
-    setPinOutput(ERGODOX_LED_1_PIN);
-    setPinOutput(ERGODOX_LED_2_PIN);
-    setPinOutput(ERGODOX_LED_3_PIN);
+    gpio_set_pin_output(ERGODOX_LED_1_PIN);
+    gpio_set_pin_output(ERGODOX_LED_2_PIN);
+    gpio_set_pin_output(ERGODOX_LED_3_PIN);
 }
 
 void keyboard_post_init_kb(void) {
     keyboard_post_init_sub();
 #ifdef ERGODOX_LED_SHUTOFF_PIN
-    setPinOutput(ERGODOX_LED_SHUTOFF_PIN);
+    gpio_set_pin_output(ERGODOX_LED_SHUTOFF_PIN);
 #endif
 
     keyboard_config.raw = eeconfig_read_kb();
@@ -49,25 +50,25 @@ void keyboard_post_init_kb(void) {
 
 void ergodox_board_led_on(void) {
 #ifdef ERGODOX_LED_SHUTOFF_PIN
-    writePinHigh(ERGODOX_LED_SHUTOFF_PIN);
+    gpio_write_pin_high(ERGODOX_LED_SHUTOFF_PIN);
 #endif
 }
 
 __attribute__((weak)) void ergodox_right_led_1_on(void) {
-    writePinHigh(ERGODOX_LED_1_PIN);
+    gpio_write_pin_high(ERGODOX_LED_1_PIN);
 }
 
 __attribute__((weak)) void ergodox_right_led_2_on(void) {
-    writePinHigh(ERGODOX_LED_2_PIN);
+    gpio_write_pin_high(ERGODOX_LED_2_PIN);
 }
 
 __attribute__((weak)) void ergodox_right_led_3_on(void) {
-    writePinHigh(ERGODOX_LED_3_PIN);
+    gpio_write_pin_high(ERGODOX_LED_3_PIN);
 }
 
 void ergodox_board_led_off(void) {
 #ifdef ERGODOX_LED_SHUTOFF_PIN
-    writePinLow(ERGODOX_LED_SHUTOFF_PIN);
+    gpio_write_pin_low(ERGODOX_LED_SHUTOFF_PIN);
 #else
     ergodox_right_led_1_off();
     ergodox_right_led_2_off();
@@ -76,15 +77,15 @@ void ergodox_board_led_off(void) {
 }
 
 __attribute__((weak)) void ergodox_right_led_1_off(void) {
-    setPinInput(ERGODOX_LED_1_PIN);
+    gpio_write_pin_low(ERGODOX_LED_1_PIN);
 }
 
 __attribute__((weak)) void ergodox_right_led_2_off(void) {
-    setPinInput(ERGODOX_LED_2_PIN);
+    gpio_write_pin_low(ERGODOX_LED_2_PIN);
 }
 
 __attribute__((weak)) void ergodox_right_led_3_off(void) {
-    setPinInput(ERGODOX_LED_3_PIN);
+    gpio_write_pin_low(ERGODOX_LED_3_PIN);
 }
 
 void ergodox_right_led_on(uint8_t led) {

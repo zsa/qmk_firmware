@@ -19,18 +19,14 @@ void keyboard_post_init_sub(void) {
     TCCR1B = 0b00001001; // set and configure fast PWM
 
     // (tied to Vcc for hardware convenience)
-    setPinInput(B4);
+    gpio_set_pin_input(B4);
 
     // unused pins - C7, D4, D5, E6
     // set as input with internal pull-up enabled
-    setPinInputHigh(C7);
-    setPinInputHigh(D4);
-    setPinInputHigh(D5);
-    setPinInputHigh(E6);
-
-    setPinOutput(ERGODOX_LED_1_PIN);
-    setPinOutput(ERGODOX_LED_2_PIN);
-    setPinOutput(ERGODOX_LED_3_PIN);
+    gpio_set_pin_input_high(C7);
+    gpio_set_pin_input_high(D4);
+    gpio_set_pin_input_high(D5);
+    gpio_set_pin_input_high(E6);
 }
 
 #ifdef RGB_MATRIX_ENABLE
