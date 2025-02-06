@@ -23,6 +23,25 @@ keyboard_config_t keyboard_config;
 bool mcp23018_leds[3] = {0, 0, 0};
 bool is_launching     = false;
 
+#ifdef CHORDAL_HOLD
+// On Moonlander, the default definition of `chordal_hold_layout` in keyboard.c
+// is unusable, since it unfortunately gets generated from the Halfmoon's
+// layout. We make a manual definition here to correct this.
+//
+// This definition and the definition in keyboard.c are weak definitions so that
+// the user may override them with their own strong definition. If there is no
+// strong definition, the linker uses the first weak definition encountered,
+// which is this one (https://maskray.me/blog/2021-04-25-weak-symbol).
+__attribute__((weak)) const char chordal_hold_layout[MATRIX_ROWS][MATRIX_COLS] PROGMEM = LAYOUT(
+  'L', 'L', 'L', 'L', 'L', 'L', 'L', 'R', 'R', 'R', 'R', 'R', 'R', 'R',
+  'L', 'L', 'L', 'L', 'L', 'L', 'L', 'R', 'R', 'R', 'R', 'R', 'R', 'R',
+  'L', 'L', 'L', 'L', 'L', 'L', 'L', 'R', 'R', 'R', 'R', 'R', 'R', 'R',
+  'L', 'L', 'L', 'L', 'L', 'L', 'R', 'R', 'R', 'R', 'R', 'R',
+  'L', 'L', 'L', 'L', 'L', 'L', 'R', 'R', 'R', 'R', 'R', 'R',
+  'L', 'L', 'L', 'R', 'R', 'R'
+);
+#endif
+
 #if defined(DEFERRED_EXEC_ENABLE)
 #    if defined(DYNAMIC_MACRO_ENABLE)
 deferred_token dynamic_macro_token = INVALID_DEFERRED_TOKEN;
