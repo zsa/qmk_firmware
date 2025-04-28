@@ -1,5 +1,5 @@
 /* Copyright 2022 Vladislav Kucheriavykh
- * Copyright 2025 Google LLC
+ * Copyright 2024-2025 Google LLC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,6 +18,6 @@
 #pragma once
 
 #include "test_common.h"
-
-#define FLOW_TAP_TERM 150
+#define CHORDAL_HOLD
 #define PERMISSIVE_HOLD
+#define FLOW_TAP_TERM 150
