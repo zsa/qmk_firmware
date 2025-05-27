@@ -6,7 +6,7 @@
 #include "oryx.h"
 #include "action_util.h"
 
-ASSERT_COMMUNITY_MODULES_MIN_API_VERSION(1, 1, 0);
+ASSERT_COMMUNITY_MODULES_MIN_API_VERSION(1, 1, 1);
 
 uint8_t current_layer = 0;
 
