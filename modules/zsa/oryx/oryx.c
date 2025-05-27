@@ -112,32 +112,30 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
     uint8_t *param   = &data[1];
 
     switch (command) {
-        case ORYX_CMD_GET_FW_VERSION:
-            {
-                uint8_t event[RAW_EPSIZE];
-                uint8_t fw_version_size = sizeof(SERIAL_NUMBER);
-                uint8_t stop[1];
+        case ORYX_CMD_GET_FW_VERSION: {
+            uint8_t event[RAW_EPSIZE];
+            uint8_t fw_version_size = sizeof(SERIAL_NUMBER);
+            uint8_t stop[1];
 
-                event[0] = ORYX_EVT_GET_FW_VERSION;
-                stop[0]  = ORYX_STOP_BIT;
+            event[0] = ORYX_EVT_GET_FW_VERSION;
+            stop[0]  = ORYX_STOP_BIT;
 
-                memcpy(event + 1, SERIAL_NUMBER, fw_version_size);
-                memcpy(event + fw_version_size, stop, 1);
+            memcpy(event + 1, SERIAL_NUMBER, fw_version_size);
+            memcpy(event + fw_version_size, stop, 1);
 
-                raw_hid_send_oryx(event, RAW_EPSIZE);
-                break;
-            }
+            raw_hid_send_oryx(event, RAW_EPSIZE);
+            break;
+        }
 
-        case ORYX_GET_PROTOCOL_VERSION:
-            {
-                uint8_t event[RAW_EPSIZE];
-                event[0] = ORYX_EVT_GET_PROTOCOL_VERSION;
-                event[1] = ORYX_PROTOCOL_VERSION;
-                event[2] = ORYX_STOP_BIT;
+        case ORYX_GET_PROTOCOL_VERSION: {
+            uint8_t event[RAW_EPSIZE];
+            event[0] = ORYX_EVT_GET_PROTOCOL_VERSION;
+            event[1] = ORYX_PROTOCOL_VERSION;
+            event[2] = ORYX_STOP_BIT;
 
-                raw_hid_send_oryx(event, RAW_EPSIZE);
-                break;
-            }
+            raw_hid_send_oryx(event, RAW_EPSIZE);
+            break;
+        }
 
         case ORYX_CMD_PAIRING_INIT:
             pairing_success_event();
@@ -246,48 +244,46 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
                     break;
             }
             break;
-        case ORYX_UPDATE_BRIGHTNESS:
-            {
+        case ORYX_UPDATE_BRIGHTNESS: {
 #if defined(RGB_MATRIX_ENABLE) && !defined(PROTOCOL_LUFA)
-                if (param[0]) {
-                    rgb_matrix_increase_val_noeeprom();
-                } else {
-                    rgb_matrix_decrease_val_noeeprom();
-                }
-#else
-                oryx_error(ORYX_ERR_RGB_MATRIX_NOT_ENABLED);
-#endif
-                break;
+            if (param[0]) {
+                rgb_matrix_increase_val_noeeprom();
+            } else {
+                rgb_matrix_decrease_val_noeeprom();
             }
-        case ORYX_STATUS_LED_CONTROL:
-            {
-                rawhid_state.status_led_control = param[0];
-                if (!param[0]) {
+#else
+            oryx_error(ORYX_ERR_RGB_MATRIX_NOT_ENABLED);
+#endif
+            break;
+        }
+        case ORYX_STATUS_LED_CONTROL: {
+            rawhid_state.status_led_control = param[0];
+            if (!param[0]) {
 #ifdef STATUS_LED_1
-                    STATUS_LED_1(0);
+                STATUS_LED_1(0);
 #endif
 #ifdef STATUS_LED_2
-                    STATUS_LED_2(0);
+                STATUS_LED_2(0);
 #endif
 #ifdef STATUS_LED_3
-                    STATUS_LED_3(0);
+                STATUS_LED_3(0);
 #endif
 #ifdef STATUS_LED_4
-                    STATUS_LED_4(0);
+                STATUS_LED_4(0);
 #endif
 #ifdef STATUS_LED_5
-                    STATUS_LED_5(0);
+                STATUS_LED_5(0);
 #endif
 #ifdef STATUS_LED_6
-                    STATUS_LED_6(0);
+                STATUS_LED_6(0);
 #endif
-                }
-                uint8_t event[RAW_EPSIZE];
-                event[0] = ORYX_EVT_STATUS_LED_CONTROL;
-                event[1] = rawhid_state.status_led_control;
-                raw_hid_send_oryx(event, RAW_EPSIZE);
-                break;
             }
+            uint8_t event[RAW_EPSIZE];
+            event[0] = ORYX_EVT_STATUS_LED_CONTROL;
+            event[1] = rawhid_state.status_led_control;
+            raw_hid_send_oryx(event, RAW_EPSIZE);
+            break;
+        }
         default:
             oryx_error(ORYX_ERR_UNKNOWN_COMMAND);
     }
