@@ -51,7 +51,7 @@ void oryx_error(uint8_t code) {
 void oryx_layer_event(void) {
     uint8_t layer;
     uint8_t event[RAW_EPSIZE];
-    layer    = get_highest_layer(layer_state);
+    layer    = get_highest_layer(layer_state | default_layer_state);
     event[0] = ORYX_EVT_LAYER;
     event[1] = layer;
     event[2] = ORYX_STOP_BIT;
@@ -72,6 +72,7 @@ void pairing_success_event(void) {
     event[0] = ORYX_EVT_PAIRING_SUCCESS;
     event[1] = ORYX_STOP_BIT;
     raw_hid_send_oryx(event, sizeof(event));
+    oryx_layer_event();
 }
 
 void toggle_smart_layer(void) {
@@ -89,7 +90,7 @@ void trigger_smart_layer(void) {
 }
 
 void set_webhid_effect(void) {
-#if defined(RGB_MATRIX_ENABLE) && !defined(PROTOCOL_LUFA)
+#if defined(RGB_MATRIX_ENABLE) && !defined(PROTOCOL_LUFA) && defined(RGB_MATRIX_CUSTOM_KB)
     rgb_matrix_mode_noeeprom(RGB_MATRIX_CUSTOM_oryx_webhid_effect);
     rawhid_state.rgb_control = true;
 #endif
@@ -294,7 +295,7 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
 
 bool pre_process_record_oryx(uint16_t keycode, keyrecord_t *record) {
     if (!pre_process_record_oryx_kb(keycode, record)) {
-        return false;
+        return true;
     }
     // While paired, the keyboard sends keystrokes positions to the host
     if (rawhid_state.paired == true) {
@@ -309,12 +310,13 @@ bool pre_process_record_oryx(uint16_t keycode, keyrecord_t *record) {
 }
 
 layer_state_t layer_state_set_oryx(layer_state_t state) {
+    state = layer_state_set_oryx_kb(state);
     if (rawhid_state.paired) {
-        uint8_t layer = get_highest_layer(state);
+        uint8_t layer = get_highest_layer(state | default_layer_state);
         // Some layer actions (OSL) trigger the layer state change thrice,
         // so we need to check if the layer has actually changed
         if (current_layer == layer) {
-            return layer_state_set_oryx_kb(state);
+            return state;
         }
         current_layer = layer;
 #if defined(PROTOCOL_LUFA)
@@ -327,5 +329,10 @@ layer_state_t layer_state_set_oryx(layer_state_t state) {
         event[2] = ORYX_STOP_BIT;
         raw_hid_send_oryx(event, sizeof(event));
     }
-    return layer_state_set_oryx_kb(state);
+    return state;
+}
+
+layer_state_t default_layer_state_set_oryx(layer_state_t state) {
+    layer_state_set_oryx(state | layer_state);
+    return default_layer_state_set_oryx_kb(state);
 }

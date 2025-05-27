@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "keycode_aliases.h"
+
 #ifndef SERIAL_NUMBER
 #    define SERIAL_NUMBER "default/latest"
 #endif // SERIAL_NUMBER

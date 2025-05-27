@@ -25,7 +25,7 @@ always respond with a Oryx_Event_Code or a Oryx_Error_Code.
 #endif
 
 #define ORYX_PROTOCOL_VERSION 0x04
-#define ORYX_STOP_BIT         -2
+#define ORYX_STOP_BIT -2
 
 enum Oryx_Command_Code {
     ORYX_CMD_GET_FW_VERSION,
