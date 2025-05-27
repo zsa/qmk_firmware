@@ -18,6 +18,7 @@
 
 #include "moonlander.h"
 #include "mcp23018.h"
+#include "i2c_master.h"
 
 #pragma GCC push_options
 #pragma GCC optimize("-O3")
@@ -46,9 +47,19 @@ bool io_expander_ready(void) {
     return mcp23018_read_pins(MCP23018_DEFAULT_ADDRESS, mcp23018_PORTA, &tx);
 }
 
-uint8_t mcp23018_init_local(void) {
+uint8_t mcp23018_init_local(bool first_run) {
+    if (!first_run) {
+        i2c_ping_address(MCP23018_DEFAULT_ADDRESS, 1);
+    }
+    wait_ms(10);
+    // Try releasing special pins for a short time
+    palSetLineMode(B6, PAL_MODE_INPUT);
+    palSetLineMode(B7, PAL_MODE_INPUT);
+    wait_ms(10);
+    palSetLineMode(B6, PAL_MODE_ALTERNATE(4) | PAL_OUTPUT_TYPE_OPENDRAIN);
+    palSetLineMode(B7, PAL_MODE_ALTERNATE(4) | PAL_OUTPUT_TYPE_OPENDRAIN);
+
     uint8_t errors = 0;
-    mcp23018_init(MCP23018_DEFAULT_ADDRESS);
     errors += !mcp23018_set_config(MCP23018_DEFAULT_ADDRESS, mcp23018_PORTA, 0b00000000);
     errors += !mcp23018_set_config(MCP23018_DEFAULT_ADDRESS, mcp23018_PORTB, 0b00111111);
 
@@ -73,7 +84,7 @@ void matrix_init_custom(void) {
     gpio_set_pin_input_low(A7);
     gpio_set_pin_input_low(B0);
 
-    mcp23018_errors = mcp23018_init_local();
+    mcp23018_errors = mcp23018_init_local(true);
 
     if (!mcp23018_errors) {
         is_launching = true;
@@ -88,7 +99,7 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
             if (io_expander_ready()) {
                 // If we managed to initialize the mcp23018 - we need to reinitialize the matrix / layer state. During an electric discharge the i2c peripherals might be in a weird state. Giving a delay and resetting the MCU allows to recover from this.
                 mcp23018_reset_loop = 0;
-                mcp23018_errors     = mcp23018_init_local();
+                mcp23018_errors     = mcp23018_init_local(false);
 #ifdef RGB_MATRIX_ENABLE
                 rgb_matrix_init();
 #endif
