@@ -15,6 +15,9 @@ extern matrix_row_t raw_matrix[MATRIX_ROWS]; // raw values
 static matrix_row_t raw_matrix_right[MATRIX_COLS];
 
 #define MCP_ROWS_PER_HAND (MATRIX_ROWS / 2)
+#ifndef I2C_DRIVER
+#    define I2C_DRIVER I2CD1
+#endif
 #ifndef VOYAGER_I2C_TIMEOUT
 #    define VOYAGER_I2C_TIMEOUT 100
 #endif
@@ -36,7 +39,7 @@ bool io_expander_ready(void) {
 
 uint8_t mcp23018_init_local(bool first_run) {
     if (!first_run) {
-        i2c_ping_address(MCP23018_DEFAULT_ADDRESS, 1);
+        i2cStop(&I2C_DRIVER);
     }
     wait_ms(10);
     // Try releasing special pins for a short time
