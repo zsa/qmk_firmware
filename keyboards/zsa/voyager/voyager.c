@@ -7,6 +7,9 @@
 #ifdef COMMUNITY_MODULE_ORYX_ENABLE
 #    include "oryx.h"
 #endif // COMMUNITY_MODULE_ORYX_ENABLE
+#ifdef COMMUNITY_MODULE_DEFAULTS_ENABLE
+#    include "defaults.h"
+#endif // COMMUNITY_MODULE_ORYX_ENABLE
 
 keyboard_config_t keyboard_config;
 
@@ -255,6 +258,7 @@ bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
                 if (keyboard_config.disable_layer_led) rgb_matrix_set_color_all(0, 0, 0);
             }
             break;
+        case RGB_TOG:
         case QK_RGB_MATRIX_TOGGLE:
             if (record->event.pressed) {
                 switch (rgb_matrix_get_flags()) {

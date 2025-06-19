@@ -34,11 +34,6 @@ extern bool mcp23018_leds[];
 #define STATUS_LED_5(status) mcp23018_leds[1] = (bool)status
 #define STATUS_LED_6(status) mcp23018_leds[2] = (bool)status
 
-enum planck_ez_keycodes {
-    TOGGLE_LAYER_COLOR = QK_KB_0,
-    LED_LEVEL,
-};
-
 #ifndef WEBUSB_ENABLE
 #    define WEBUSB_PAIR KC_NO
 #endif
