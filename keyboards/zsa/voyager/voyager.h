@@ -22,7 +22,6 @@ typedef union {
         bool    disable_layer_led : 1;
         bool    led_level : 1;
         uint8_t led_level_res : 2; // DO NOT REMOVE
-        uint8_t navigator_cpi : 3;
     };
 } keyboard_config_t;
 

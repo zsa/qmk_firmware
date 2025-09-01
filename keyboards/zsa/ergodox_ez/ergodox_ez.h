@@ -68,7 +68,6 @@ typedef union {
     struct {
         uint8_t led_level : 3;
         bool    disable_layer_led : 1;
-        uint8_t navigator_cpi : 3;
         bool    placeholder : 1;
     };
 } keyboard_config_t;

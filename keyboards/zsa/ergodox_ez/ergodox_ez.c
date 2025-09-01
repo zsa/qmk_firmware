@@ -305,7 +305,6 @@ void eeconfig_init_kb(void) { // EEPROM is getting reset!
     keyboard_config.raw       = 0;
     keyboard_config.led_level = 4;
     keyboard_config.navigator_cpi = 3;
-    eeconfig_update_kb(keyboard_config.raw);
     eeconfig_init_user();
 }
 
