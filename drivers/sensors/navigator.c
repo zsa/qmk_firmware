@@ -28,7 +28,6 @@
 
 #include "quantum.h"
 #include "navigator.h"
-#include <math.h>
 
 float scroll_accumulated_h = 0;
 float scroll_accumulated_v = 0;
@@ -79,8 +78,13 @@ report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
             scroll_v = (scroll_accumulated_v > 0) ? speed_v : -speed_v;
         }
 
+#ifdef NAVIGATOR_SCROLL_INVERT_X
+        mouse_report.h = (int8_t)-scroll_h;
+#else
         mouse_report.h = (int8_t)scroll_h;
-#ifdef NAVIGATOR_SCROLL_INVERT
+#endif
+
+#ifdef NAVIGATOR_SCROLL_INVERT_Y
         mouse_report.v = (int8_t)-scroll_v;
 #else
         mouse_report.v = (int8_t)scroll_v;
