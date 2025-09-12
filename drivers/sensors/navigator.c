@@ -79,9 +79,9 @@ report_mouse_t pointing_device_task_kb(report_mouse_t mouse_report) {
         }
 
 #ifdef NAVIGATOR_SCROLL_INVERT_X
-        mouse_report.h = (int8_t)-scroll_h;
-#else
         mouse_report.h = (int8_t)scroll_h;
+#else
+        mouse_report.h = (int8_t)-scroll_h;
 #endif
 
 #ifdef NAVIGATOR_SCROLL_INVERT_Y
