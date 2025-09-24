@@ -14,6 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+#define POINTING_DEVICE_AUTO_MOUSE_ENABLE
 
 #ifdef POINTING_DEVICE_AUTO_MOUSE_ENABLE
 
@@ -32,6 +33,9 @@ static auto_mouse_context_t auto_mouse_context = {
     .config.layer    = (uint8_t)(AUTO_MOUSE_DEFAULT_LAYER),
     .config.timeout  = (uint16_t)(AUTO_MOUSE_TIME),
     .config.debounce = (uint8_t)(AUTO_MOUSE_DEBOUNCE),
+#ifdef AUTO_MOUSE_ONESHOT
+    .one_shot = false,
+#endif
 };
 
 /* local functions */
@@ -49,7 +53,11 @@ static inline bool layer_hold_check(void) {
 
 /* check all layer activation criteria */
 bool is_auto_mouse_active(void) {
+#ifdef AUTO_MOUSE_ONESHOT
+    return auto_mouse_context.status.is_activated || auto_mouse_context.status.mouse_key_tracker || layer_hold_check() || auto_mouse_context.one_shot;
+#else
     return auto_mouse_context.status.is_activated || auto_mouse_context.status.mouse_key_tracker || layer_hold_check();
+#endif
 }
 
 /**
@@ -266,6 +274,11 @@ void pointing_device_task_auto_mouse(report_mouse_t mouse_report) {
         auto_mouse_context.timer.delay          = 0;
         if (!layer_state_is((AUTO_MOUSE_TARGET_LAYER))) {
             layer_on((AUTO_MOUSE_TARGET_LAYER));
+#ifdef AUTO_MOUSE_ONESHOT
+            if (!auto_mouse_context.one_shot) {
+                auto_mouse_context.one_shot = true;
+            }
+#endif
         }
     } else if (layer_state_is((AUTO_MOUSE_TARGET_LAYER)) && timer_elapsed(auto_mouse_context.timer.active) > auto_mouse_context.config.timeout) {
 #ifdef LAYER_LOCK_ENABLE
@@ -429,6 +442,13 @@ bool process_auto_mouse(uint16_t keycode, keyrecord_t* record) {
         auto_mouse_context.status.mouse_key_tracker = 0;
         dprintf("key tracker error (<0) \n");
     }
+
+#ifdef AUTO_MOUSE_ONESHOT
+    if (is_auto_mouse_active()) {
+        auto_mouse_context.one_shot = false;
+    }
+#endif
+
     return true;
 }
 
@@ -444,13 +464,13 @@ bool process_auto_mouse(uint16_t keycode, keyrecord_t* record) {
 static bool is_mouse_record(uint16_t keycode, keyrecord_t* record) {
     // allow for keyboard to hook in and override if need be
     if (is_mouse_record_kb(keycode, record)) return true;
-    
+
     // if it's a mouse key, only treat it as a mouse record if we're currently on the auto mouse target layer
     // this prevents mouse keys from activating the auto mouse layer when pressed on other layers
     if (IS_MOUSEKEY(keycode)) {
         return layer_state_is((AUTO_MOUSE_TARGET_LAYER));
     }
-    
+
     return false;
 }
 

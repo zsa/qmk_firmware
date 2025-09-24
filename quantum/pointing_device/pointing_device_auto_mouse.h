@@ -73,6 +73,9 @@ typedef struct {
         int8_t mouse_key_tracker;
     } status;
     total_mouse_movement_t total_mouse_movement;
+#ifdef AUTO_MOUSE_ONESHOT
+    bool one_shot;
+#endif
 } auto_mouse_context_t;
 
 /* ----------Set up and control------------------------------------------------------------------------------ */
