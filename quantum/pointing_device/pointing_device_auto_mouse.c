@@ -274,12 +274,12 @@ void pointing_device_task_auto_mouse(report_mouse_t mouse_report) {
         auto_mouse_context.timer.delay          = 0;
         if (!layer_state_is((AUTO_MOUSE_TARGET_LAYER))) {
             layer_on((AUTO_MOUSE_TARGET_LAYER));
-#ifdef AUTO_MOUSE_ONESHOT
-            if (!auto_mouse_context.one_shot) {
-                auto_mouse_context.one_shot = true;
-            }
-#endif
         }
+#ifdef AUTO_MOUSE_ONESHOT
+                if (!auto_mouse_context.one_shot) {
+                    auto_mouse_context.one_shot = true;
+                }
+#endif
     } else if (layer_state_is((AUTO_MOUSE_TARGET_LAYER)) && timer_elapsed(auto_mouse_context.timer.active) > auto_mouse_context.config.timeout) {
 #ifdef LAYER_LOCK_ENABLE
         if(is_layer_locked(AUTO_MOUSE_DEFAULT_LAYER)) return;
