@@ -26,7 +26,7 @@ To set up the local build enviroment to create the firmware image manually, head
 And instead of using just `qmk setup`, you will want to run this instead:
 
 ```sh
-qmk setup zsa/qmk_firmware -b firmware24
+qmk setup zsa/qmk_firmware -b firmware25
 ```
 
 Note the current branch of ZSA's QMK fork and replace the above command with that if this is out of date. You can also compile against different firmware revisions by specifying a different branch. 
