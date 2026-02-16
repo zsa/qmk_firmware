@@ -29,7 +29,17 @@ And instead of using just `qmk setup`, you will want to run this instead:
 qmk setup zsa/qmk_firmware -b firmware25
 ```
 
-Note the current branch of ZSA's QMK fork and replace the above command with that if this is out of date. You can also compile against different firmware revisions by specifying a different branch. 
+Note the current branch of ZSA's QMK fork and replace the above command with that if this is out of date. You can also compile against different firmware revisions by specifying a different branch.
+
+## Developing
+
+If your text editor supports LSP for C with `clangd`, you need to generate a compilation database:
+
+```
+qmk build --compiledb
+```
+
+The generated compilation database must be regenerated each time you change board or keymap.
 
 ## Maintainers
 QMK is developed and maintained by Jack Humbert of OLKB with contributions from the community, and of course, [Hasu](https://github.com/tmk). The OLKB product firmwares are maintained by [Jack Humbert](https://github.com/jackhumbert), the Ergodox EZ by [ZSA Technology Labs](https://github.com/zsa), the Clueboard by [Zach White](https://github.com/skullydazed), and the Atreus by [Phil Hagelberg](https://github.com/technomancy).
