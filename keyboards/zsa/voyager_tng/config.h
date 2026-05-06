@@ -17,7 +17,11 @@
 #define MOUSEKEY_WHEEL_MAX_SPEED MOUSEKEY_MAX_SPEED
 #define MOUSEKEY_WHEEL_TIME_TO_MAX MOUSEKEY_TIME_TO_MAX
 
-// UART configuration for USART1 (PA9=TX, PA10=RX) — nRF54 communication
+// UART configuration for USART1 (PA9=TX, PA10=RX) — nRF54 communication.
+// Baud must match the left-nRF's uart00 (current-speed in the overlay) and
+// Ignition's UART_DFU_BAUD; mismatch silently breaks the wireless link.
 #define UART_DRIVER SD1
 #define UART_TX_PIN A9
 #define UART_RX_PIN A10
+#undef ZSA_WIRELESS_BAUD_RATE
+#define ZSA_WIRELESS_BAUD_RATE 1000000
