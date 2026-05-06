@@ -5,7 +5,7 @@
 
 #define HAL_USE_I2C TRUE
 #define HAL_USE_SERIAL TRUE
-#define SERIAL_DEFAULT_BITRATE 115200
+#define SERIAL_DEFAULT_BITRATE 1000000
 #define SERIAL_BUFFERS_SIZE 64
 
 #include_next <halconf.h>
