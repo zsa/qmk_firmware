@@ -74,10 +74,6 @@ typedef struct {
 #    include "spi_master.h"
 #    include "drivers/sensors/pmw33xx_common.h"
 #    define POINTING_DEVICE_MOTION_PIN_ACTIVE_LOW
-#elif defined(POINTING_DEVICE_DRIVER_navigator_trackpad)
-#    include "i2c_master.h"
-#    include "drivers/sensors/navigator_trackpad.h"
-#    include "drivers/sensors/navigator.h"
 #else
 void           pointing_device_driver_init(void);
 report_mouse_t pointing_device_driver_get_report(report_mouse_t mouse_report);

@@ -135,6 +135,7 @@ usb_endpoint_in_lut_t usb_endpoint_interface_lut[TOTAL_INTERFACES] = {
 #if defined(DIGITIZER_ENABLE) && !defined(DIGITIZER_SHARED_EP)
     [DIGITIZER_INTERFACE] = USB_ENDPOINT_IN_DIGITIZER,
 #endif
+
 };
 
 usb_endpoint_out_t usb_endpoints_out[USB_ENDPOINT_OUT_COUNT] = {

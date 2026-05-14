@@ -157,13 +157,27 @@ ifeq ($(strip $(POINTING_DEVICE_ENABLE)), yes)
             SRC += $(QUANTUM_DIR)/pointing_device/pointing_device_gestures.c
         else ifeq ($(strip $(POINTING_DEVICE_DRIVER)), pimoroni_trackball)
             I2C_DRIVER_REQUIRED = yes
-        else ifeq ($(strip $(POINTING_DEVICE_DRIVER)), navigator_trackpad)
-            I2C_DRIVER_REQUIRED = yes
-            SRC += drivers/sensors/navigator.c
         else ifneq ($(filter $(strip $(POINTING_DEVICE_DRIVER)),pmw3360 pmw3389),)
             SPI_DRIVER_REQUIRED = yes
             SRC += drivers/sensors/pmw33xx_common.c
         endif
+    endif
+endif
+
+# Digitizer feature
+DIGITIZER_MODE ?= stylus
+
+VALID_DIGITIZER_MODE_TYPES := stylus touchpad
+
+ifeq ($(strip $(DIGITIZER_ENABLE)), yes)
+    ifeq ($(filter $(DIGITIZER_MODE),$(VALID_DIGITIZER_MODE_TYPES)),)
+        $(call CATASTROPHIC_ERROR,Invalid DIGITIZER_MODE,DIGITIZER_MODE="$(DIGITIZER_MODE)" is not a valid mode)
+    endif
+
+    ifeq ($(strip $(DIGITIZER_MODE)), touchpad)
+        OPT_DEFS += -DDIGITIZER_MODE_TOUCHPAD
+    else
+        OPT_DEFS += -DDIGITIZER_MODE_STYLUS
     endif
 endif
 

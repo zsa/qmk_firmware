@@ -24,7 +24,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "usb_device_state.h"
 
 #ifdef DIGITIZER_ENABLE
-#    include "digitizer.h"
+// Use quantum/digitizer.h explicitly to get digitizer_t (tmk_core/protocol/digitizer.h
+// only carries the PTP parametric defines, not the stylus-mode struct).
+#    include "quantum/digitizer.h"
 #endif
 
 #ifdef JOYSTICK_ENABLE
@@ -270,7 +272,7 @@ void host_joystick_send(joystick_t *joystick) {
 
 __attribute__((weak)) void send_joystick(report_joystick_t *report) {}
 
-#ifdef DIGITIZER_ENABLE
+#if defined(DIGITIZER_ENABLE) && !defined(DIGITIZER_MODE_TOUCHPAD)
 void host_digitizer_send(digitizer_t *digitizer) {
     report_digitizer_t report = {
 #    ifdef DIGITIZER_SHARED_EP

@@ -29,7 +29,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // clang-format off
 
 /* HID report IDs */
-enum hid_report_ids { 
+enum hid_report_ids {
     REPORT_ID_ALL = 0,
     REPORT_ID_KEYBOARD = 1,
     REPORT_ID_MOUSE,
@@ -239,6 +239,56 @@ typedef struct {
     uint16_t x;
     uint16_t y;
 } PACKED report_digitizer_t;
+
+// Touchpad-mode report structures (DIGITIZER_MODE_TOUCHPAD).
+// Per-contact data structure - 6 bytes per contact
+// Byte layout: [conf:1 + tip:1 + pad:6] [id:3 + pad:5] [X low] [X high] [Y low] [Y high]
+typedef struct {
+    uint8_t  confidence : 1;
+    uint8_t  tip : 1;
+    uint8_t  reserved : 6;
+    uint8_t  contact_id : 3;
+    uint8_t  reserved2 : 5;
+    uint16_t x;
+    uint16_t y;
+} PACKED digitizer_touchpad_finger_t;
+
+#ifndef DIGITIZER_TOUCHPAD_CONTACT_COUNT
+#    define DIGITIZER_TOUCHPAD_CONTACT_COUNT 2
+#endif
+
+// Main touchpad input report
+// Field order: [ReportID][Contacts...][ScanTime][Count:4+Buttons:3+Pad:1]
+typedef struct {
+    uint8_t report_id;
+#if DIGITIZER_TOUCHPAD_CONTACT_COUNT > 0
+    digitizer_touchpad_finger_t fingers[DIGITIZER_TOUCHPAD_CONTACT_COUNT];
+#endif
+    uint16_t scan_time;
+    uint8_t  contact_count : 4;
+    uint8_t  button1 : 1;
+    uint8_t  button2 : 1;
+    uint8_t  button3 : 1;
+    uint8_t  reserved2 : 1;
+} PACKED report_digitizer_touchpad_t;
+
+_Static_assert(sizeof(digitizer_touchpad_finger_t) == 6,
+               "digitizer_touchpad_finger_t must be 6 bytes");
+_Static_assert(sizeof(report_digitizer_touchpad_t) == 16,
+               "report_digitizer_touchpad_t must be 16 bytes (assumes CONTACT_COUNT=2)");
+
+// Boot mouse fallback report (report ID 0x06 in the touchpad descriptor).
+#define DIGITIZER_TOUCHPAD_MOUSE_REPORT_ID 0x06
+
+typedef struct {
+    uint8_t report_id;
+    uint8_t buttons;
+    int8_t  x;
+    int8_t  y;
+} PACKED report_digitizer_touchpad_mouse_t;
+
+_Static_assert(sizeof(report_digitizer_touchpad_mouse_t) == 4,
+               "report_digitizer_touchpad_mouse_t must be 4 bytes");
 
 #if JOYSTICK_AXIS_RESOLUTION > 8
 typedef int16_t joystick_axis_t;

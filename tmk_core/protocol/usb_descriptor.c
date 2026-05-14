@@ -356,6 +356,202 @@ const USB_Descriptor_HIDReport_Datatype_t PROGMEM SharedReport[] = {
 #    endif
 #endif
 
+#ifdef DIGITIZER_MODE_TOUCHPAD
+#    include "digitizer.h"
+
+// PTP finger contact collection macro - reduces duplication for multi-finger support
+// Each finger reports: confidence, tip switch, contact ID, X position, Y position
+#define PTP_FINGER_COLLECTION                                                              \
+    HID_RI_USAGE(8, 0x22),             /* Finger */                                        \
+    HID_RI_COLLECTION(8, 0x00),        /* Physical */                                      \
+        HID_RI_PUSH(0),                                                                    \
+        HID_RI_LOGICAL_MINIMUM(8, 0x00),                                                   \
+        HID_RI_LOGICAL_MAXIMUM(8, 0x01),                                                   \
+        /* Tip Switch, Confidence (2 bits) */                                              \
+        HID_RI_USAGE(8, 0x47),         /* Confidence */                                    \
+        HID_RI_USAGE(8, 0x42),         /* Tip Switch */                                    \
+        HID_RI_REPORT_COUNT(8, 0x02),                                                      \
+        HID_RI_REPORT_SIZE(8, 0x01),                                                       \
+        HID_RI_INPUT(8, HID_IOF_DATA | HID_IOF_VARIABLE | HID_IOF_ABSOLUTE),               \
+        /* Padding (6 bits) */                                                             \
+        HID_RI_REPORT_SIZE(8, 0x01),                                                       \
+        HID_RI_REPORT_COUNT(8, 0x06),                                                      \
+        HID_RI_INPUT(8, HID_IOF_CONSTANT),                                                 \
+        /* Contact identifier (3 bits) */                                                  \
+        HID_RI_REPORT_COUNT(8, 0x01),                                                      \
+        HID_RI_REPORT_SIZE(8, 0x03),                                                       \
+        HID_RI_LOGICAL_MAXIMUM(8, 0x05),                                                   \
+        HID_RI_USAGE(8, 0x51),         /* Contact identifier */                            \
+        HID_RI_INPUT(8, HID_IOF_DATA | HID_IOF_VARIABLE | HID_IOF_ABSOLUTE),               \
+        /* Padding (5 bits) */                                                             \
+        HID_RI_REPORT_SIZE(8, 0x01),                                                       \
+        HID_RI_REPORT_COUNT(8, 0x05),                                                      \
+        HID_RI_INPUT(8, HID_IOF_CONSTANT),                                                 \
+        /* X/Y Position (4 bytes) */                                                       \
+        HID_RI_USAGE_PAGE(8, 0x01),    /* Generic Desktop */                               \
+        HID_RI_LOGICAL_MINIMUM(8, 0x0),                                                    \
+        HID_RI_LOGICAL_MAXIMUM(16, DIGITIZER_TOUCHPAD_LOGICAL_MAX),                                  \
+        HID_RI_REPORT_SIZE(8, 16),                                                         \
+        HID_RI_UNIT_EXPONENT(8, 0x0E), /* -2 */                                            \
+        HID_RI_UNIT(8, 0x11),          /* CM, English Linear */                            \
+        HID_RI_USAGE(8, 0x30),         /* X */                                             \
+        HID_RI_PHYSICAL_MINIMUM(8, 0x0),                                                   \
+        HID_RI_PHYSICAL_MAXIMUM(16, (DIGITIZER_TOUCHPAD_PHYSICAL_WIDTH)),                            \
+        HID_RI_REPORT_COUNT(8, 0x01),                                                      \
+        HID_RI_INPUT(8, HID_IOF_DATA | HID_IOF_VARIABLE | HID_IOF_ABSOLUTE),               \
+        HID_RI_LOGICAL_MAXIMUM(16, DIGITIZER_TOUCHPAD_LOGICAL_MAX),                                  \
+        HID_RI_PHYSICAL_MAXIMUM(16, (DIGITIZER_TOUCHPAD_PHYSICAL_HEIGHT)),                           \
+        HID_RI_USAGE(8, 0x31),         /* Y */                                             \
+        HID_RI_INPUT(8, HID_IOF_DATA | HID_IOF_VARIABLE | HID_IOF_ABSOLUTE),               \
+        HID_RI_POP(0),                                                                     \
+    HID_RI_END_COLLECTION(0)
+
+// Digitizer/Touchpad HID Descriptor
+const USB_Descriptor_HIDReport_Datatype_t PROGMEM DigitizerTouchpadReport[] = {
+    HID_RI_USAGE_PAGE(8, 0x0D),            // Digitizers
+    HID_RI_USAGE(8, 0x05),                 // Touchpad
+    HID_RI_COLLECTION(8, 0x01),            // Application
+        // Use report ID 1 for touchpad input (separate interface has own ID space)
+        HID_RI_REPORT_ID(8, 0x01),
+
+        // Contact 1
+        PTP_FINGER_COLLECTION,
+
+        // Contact 2
+        HID_RI_USAGE_PAGE(8, 0x0D),        // Digitizers (reset usage page after Generic Desktop)
+        PTP_FINGER_COLLECTION,
+
+        // Scan Time and Contact Count
+        HID_RI_PUSH(0),
+        HID_RI_UNIT_EXPONENT(8, 0x0C),  // -4
+        HID_RI_UNIT(16, 0x1001),        // Seconds, SI Linear
+        HID_RI_USAGE_PAGE(8, 0x0D),    // Digitizers
+        HID_RI_USAGE(8, 0x56),         // Scan Time
+        HID_RI_PHYSICAL_MINIMUM(0),
+        HID_RI_LOGICAL_MINIMUM(0),
+        HID_RI_PHYSICAL_MAXIMUM(32, 65535),
+        HID_RI_LOGICAL_MAXIMUM(32, 65535),
+        HID_RI_REPORT_SIZE(8, 16),
+        HID_RI_REPORT_COUNT(8, 0x01),
+        HID_RI_INPUT(8, HID_IOF_DATA | HID_IOF_VARIABLE | HID_IOF_ABSOLUTE),
+        HID_RI_USAGE(8, 0x54),         // Contact count
+        HID_RI_LOGICAL_MAXIMUM(8, 5),
+        HID_RI_REPORT_COUNT(8, 0x01),
+        HID_RI_REPORT_SIZE(8, 0x04),
+        HID_RI_INPUT(8, HID_IOF_DATA | HID_IOF_VARIABLE | HID_IOF_ABSOLUTE),
+
+        // Buttons
+        HID_RI_USAGE_PAGE(8, 0x09),    // Buttons
+        HID_RI_USAGE(8, 0x01),         // Button 1
+        HID_RI_USAGE(8, 0x02),         // Button 2
+        HID_RI_USAGE(8, 0x03),         // Button 3
+        HID_RI_LOGICAL_MAXIMUM(8, 1),
+        HID_RI_REPORT_SIZE(8, 1),
+        HID_RI_REPORT_COUNT(8, 3),
+        HID_RI_INPUT(8, HID_IOF_DATA | HID_IOF_VARIABLE | HID_IOF_ABSOLUTE),
+
+        // Padding (1 bit)
+        HID_RI_REPORT_SIZE(8, 0x01),
+        HID_RI_REPORT_COUNT(8, 0x01),
+        HID_RI_INPUT(8, HID_IOF_CONSTANT),
+
+        // Feature: Contact Count Maximum + Pad Type
+        HID_RI_USAGE_PAGE(8, 0x0D),    // Digitizers
+        HID_RI_REPORT_ID(8, 0x02),     // Feature report ID 2
+        HID_RI_USAGE(8, 0x55),         // Contact Count Maximum
+        HID_RI_REPORT_SIZE(8, 0x04),
+        HID_RI_REPORT_COUNT(8, 0x01),
+        HID_RI_LOGICAL_MAXIMUM(8, 15),
+        HID_RI_FEATURE(8, HID_IOF_DATA | HID_IOF_VARIABLE | HID_IOF_ABSOLUTE),
+        HID_RI_USAGE(8, 0x59),         // Pad type
+        HID_RI_REPORT_SIZE(8, 0x03),
+        HID_RI_REPORT_COUNT(8, 0x01),
+        HID_RI_LOGICAL_MAXIMUM(8, 7),
+        HID_RI_FEATURE(8, HID_IOF_DATA | HID_IOF_VARIABLE | HID_IOF_ABSOLUTE),
+        HID_RI_USAGE(8, 0x57),         // Surface switch
+        HID_RI_REPORT_SIZE(8, 0x01),
+        HID_RI_REPORT_COUNT(8, 0x01),
+        HID_RI_LOGICAL_MAXIMUM(8, 1),
+        HID_RI_FEATURE(8, HID_IOF_DATA | HID_IOF_VARIABLE | HID_IOF_ABSOLUTE),
+
+        // Feature: Certification blob (256 bytes)
+        HID_RI_USAGE_PAGE(16, 0xFF),           // Vendor
+        HID_RI_REPORT_ID(8, 0x03),             // Feature report ID 3
+        HID_RI_USAGE(8, 0xC5),                 // Vendor usage
+        HID_RI_LOGICAL_MAXIMUM(16, 255),
+        HID_RI_REPORT_SIZE(8, 0x08),
+        HID_RI_REPORT_COUNT(16, 256),
+        HID_RI_FEATURE(8, HID_IOF_DATA | HID_IOF_VARIABLE | HID_IOF_ABSOLUTE),
+
+        HID_RI_POP(0),
+    HID_RI_END_COLLECTION(0),
+
+    // Configuration TLC
+    HID_RI_USAGE_PAGE(8, 0x0D),            // Digitizers
+    HID_RI_USAGE(8, 0x0E),                 // Configuration
+    HID_RI_COLLECTION(8, 0x01),            // Application
+        HID_RI_PUSH(0),
+        HID_RI_REPORT_ID(8, 0x04),         // Feature report ID 4
+        HID_RI_USAGE(8, 0x22),                 // Finger
+        HID_RI_COLLECTION(8, 0x02),            // Logical
+            HID_RI_USAGE(8, 0x52),                 // Input mode
+            HID_RI_LOGICAL_MINIMUM(8, 0),
+            HID_RI_LOGICAL_MAXIMUM(8, 10),
+            HID_RI_REPORT_COUNT(8, 0x01),
+            HID_RI_REPORT_SIZE(8, 0x08),
+            HID_RI_FEATURE(8, HID_IOF_DATA | HID_IOF_VARIABLE | HID_IOF_ABSOLUTE),
+        HID_RI_END_COLLECTION(0),
+
+        HID_RI_USAGE(8, 0x22),                 // Finger
+        HID_RI_COLLECTION(8, 0x00),            // Physical
+            HID_RI_REPORT_ID(8, 0x05),         // Feature report ID 5
+            HID_RI_USAGE(8, 0x57),                 // Surface switch
+            HID_RI_USAGE(8, 0x58),                 // Button switch
+            HID_RI_LOGICAL_MAXIMUM(8, 1),
+            HID_RI_REPORT_COUNT(8, 0x02),
+            HID_RI_REPORT_SIZE(8, 0x01),
+            HID_RI_FEATURE(8, HID_IOF_DATA | HID_IOF_VARIABLE | HID_IOF_ABSOLUTE),
+            HID_RI_REPORT_COUNT(8, 0x06),
+            HID_RI_FEATURE(8, HID_IOF_CONSTANT | HID_IOF_VARIABLE | HID_IOF_ABSOLUTE),
+            HID_RI_POP(0),
+        HID_RI_END_COLLECTION(0),
+    HID_RI_END_COLLECTION(0),
+
+    // Fallback Mouse Collection - for systems that don't support PTP
+    // Uses report ID 0x06 to avoid conflicts with PTP reports (0x01-0x05)
+    HID_RI_USAGE_PAGE(8, 0x01),            // Generic Desktop
+    HID_RI_USAGE(8, 0x02),                 // Mouse
+    HID_RI_COLLECTION(8, 0x01),            // Application
+        HID_RI_REPORT_ID(8, 0x06),
+        HID_RI_USAGE(8, 0x01),             // Pointer
+        HID_RI_COLLECTION(8, 0x00),        // Physical
+            // Buttons (3 bits)
+            HID_RI_USAGE_PAGE(8, 0x09),    // Button
+            HID_RI_USAGE_MINIMUM(8, 0x01), // Button 1
+            HID_RI_USAGE_MAXIMUM(8, 0x03), // Button 3
+            HID_RI_LOGICAL_MINIMUM(8, 0x00),
+            HID_RI_LOGICAL_MAXIMUM(8, 0x01),
+            HID_RI_REPORT_COUNT(8, 0x03),
+            HID_RI_REPORT_SIZE(8, 0x01),
+            HID_RI_INPUT(8, HID_IOF_DATA | HID_IOF_VARIABLE | HID_IOF_ABSOLUTE),
+            // Padding (5 bits)
+            HID_RI_REPORT_COUNT(8, 0x01),
+            HID_RI_REPORT_SIZE(8, 0x05),
+            HID_RI_INPUT(8, HID_IOF_CONSTANT),
+            // X/Y position (2 bytes, relative)
+            HID_RI_USAGE_PAGE(8, 0x01),    // Generic Desktop
+            HID_RI_USAGE(8, 0x30),         // X
+            HID_RI_USAGE(8, 0x31),         // Y
+            HID_RI_LOGICAL_MINIMUM(8, -127),
+            HID_RI_LOGICAL_MAXIMUM(8, 127),
+            HID_RI_REPORT_COUNT(8, 0x02),
+            HID_RI_REPORT_SIZE(8, 0x08),
+            HID_RI_INPUT(8, HID_IOF_DATA | HID_IOF_VARIABLE | HID_IOF_RELATIVE),
+        HID_RI_END_COLLECTION(0),
+    HID_RI_END_COLLECTION(0),
+};
+#endif
+
 #if defined(SHARED_EP_ENABLE) && !defined(SHARED_REPORT_STARTED)
 const USB_Descriptor_HIDReport_Datatype_t PROGMEM SharedReport[] = {
 #endif
@@ -1084,7 +1280,11 @@ const USB_Descriptor_Configuration_t PROGMEM ConfigurationDescriptor = {
         .CountryCode            = 0x00,
         .TotalReportDescriptors = 1,
         .HIDReportType          = HID_DTYPE_Report,
+#    ifdef DIGITIZER_MODE_TOUCHPAD
+        .HIDReportLength        = sizeof(DigitizerTouchpadReport)
+#    else
         .HIDReportLength        = sizeof(DigitizerReport)
+#    endif
     },
     .Digitizer_INEndpoint = {
         .Header = {
@@ -1097,6 +1297,7 @@ const USB_Descriptor_Configuration_t PROGMEM ConfigurationDescriptor = {
         .PollingIntervalMS      = USB_POLLING_INTERVAL_MS
     },
 #endif
+
 };
 
 /*
@@ -1352,8 +1553,13 @@ uint16_t get_usb_descriptor(const uint16_t wValue, const uint16_t wIndex, const 
 #endif
 #if defined(DIGITIZER_ENABLE) && !defined(DIGITIZER_SHARED_EP)
                 case DIGITIZER_INTERFACE:
+#    ifdef DIGITIZER_MODE_TOUCHPAD
+                    Address = &DigitizerTouchpadReport;
+                    Size    = sizeof(DigitizerTouchpadReport);
+#    else
                     Address = &DigitizerReport;
                     Size    = sizeof(DigitizerReport);
+#    endif
                     break;
 #endif
             }

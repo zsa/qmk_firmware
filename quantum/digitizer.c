@@ -74,3 +74,13 @@ void digitizer_set_position(float x, float y) {
     digitizer_state.dirty = true;
     digitizer_flush();
 }
+
+#ifdef DIGITIZER_MODE_TOUCHPAD
+
+__attribute__((weak)) void digitizer_touchpad_init(void) {}
+
+__attribute__((weak)) bool digitizer_touchpad_task(void) {
+    return false;
+}
+
+#endif // DIGITIZER_MODE_TOUCHPAD

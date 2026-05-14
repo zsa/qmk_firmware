@@ -58,6 +58,20 @@ extern keymap_config_t keymap_config;
 extern usb_endpoint_in_t  usb_endpoints_in[USB_ENDPOINT_IN_COUNT];
 extern usb_endpoint_out_t usb_endpoints_out[USB_ENDPOINT_OUT_COUNT];
 
+#ifdef DIGITIZER_MODE_TOUCHPAD
+// Input mode: 0 = Mouse (boot, default per spec), 3 = Windows Precision Touchpad.
+// Host writes feature report 0x04 to switch.
+static uint8_t digitizer_touchpad_input_mode = 0;
+
+uint8_t digitizer_touchpad_get_input_mode(void) {
+    return digitizer_touchpad_input_mode;
+}
+
+static void digitizer_touchpad_set_input_mode(uint8_t mode) {
+    digitizer_touchpad_input_mode = mode;
+}
+#endif
+
 static bool __attribute__((__unused__)) send_report_buffered(usb_endpoint_in_lut_t endpoint, void *report, size_t size);
 static void __attribute__((__unused__)) flush_report_buffered(usb_endpoint_in_lut_t endpoint, bool padded);
 static bool __attribute__((__unused__)) receive_report(usb_endpoint_out_lut_t endpoint, void *report, size_t size);
@@ -245,6 +259,18 @@ static void usb_event_cb(USBDriver *usbp, usbevent_t event) {
 
 static uint8_t _Alignas(4) set_report_buf[2];
 
+#ifdef DIGITIZER_MODE_TOUCHPAD
+static void digitizer_touchpad_set_input_mode_cb(USBDriver *usbp) {
+    usb_control_request_t *setup = (usb_control_request_t *)usbp->setup;
+    uint8_t report_id = setup->wValue.lbyte;
+
+    // Feature report 0x04 carries the Input Mode value (byte 1)
+    if (report_id == 0x04 && setup->wLength >= 2) {
+        digitizer_touchpad_set_input_mode(set_report_buf[1]);
+    }
+}
+#endif
+
 static void set_led_transfer_cb(USBDriver *usbp) {
     usb_control_request_t *setup = (usb_control_request_t *)usbp->setup;
 
@@ -289,8 +315,36 @@ static bool usb_requests_hook_cb(USBDriver *usbp) {
 #if defined(SHARED_EP_ENABLE) && !defined(KEYBOARD_SHARED_EP)
                             case SHARED_INTERFACE:
 #endif
+                            {
+#if defined(POINTING_DEVICE_HIRES_SCROLL_ENABLE)
+                                uint8_t report_type = setup->wValue.hbyte;
+                                // Feature report (type 3) is used for Resolution Multiplier
+                                if (report_type == 3) {
+                                    // Accept SET_REPORT for Resolution Multiplier feature report
+                                    // The host sets this to enable high-resolution scrolling
+                                    usbSetupTransfer(usbp, set_report_buf, sizeof(set_report_buf), NULL);
+                                    return true;
+                                }
+#endif
+                                // Output report (type 2) is used for keyboard LEDs
                                 usbSetupTransfer(usbp, set_report_buf, sizeof(set_report_buf), set_led_transfer_cb);
                                 return true;
+                            }
+#if defined(MOUSE_ENABLE) && !defined(MOUSE_SHARED_EP)
+                            case MOUSE_INTERFACE:
+#    if defined(POINTING_DEVICE_HIRES_SCROLL_ENABLE)
+                                // Accept SET_REPORT for Resolution Multiplier feature report
+                                usbSetupTransfer(usbp, set_report_buf, sizeof(set_report_buf), NULL);
+                                return true;
+#    endif
+                                break;
+#endif
+#ifdef DIGITIZER_MODE_TOUCHPAD
+                            case DIGITIZER_INTERFACE:
+                                // Accept SET_REPORT for PTP - handle input mode switching
+                                usbSetupTransfer(usbp, set_report_buf, sizeof(set_report_buf), digitizer_touchpad_set_input_mode_cb);
+                                return true;
+#endif
                         }
                         break;
                     case HID_REQ_SetProtocol:
@@ -500,6 +554,16 @@ void send_digitizer(report_digitizer_t *report) {
     send_report(USB_ENDPOINT_IN_DIGITIZER, report, sizeof(report_digitizer_t));
 #endif
 }
+
+#ifdef DIGITIZER_MODE_TOUCHPAD
+void send_digitizer_touchpad(report_digitizer_touchpad_t *report) {
+    send_report(USB_ENDPOINT_IN_DIGITIZER, report, sizeof(report_digitizer_touchpad_t));
+}
+
+void send_digitizer_touchpad_mouse(report_digitizer_touchpad_mouse_t *report) {
+    send_report(USB_ENDPOINT_IN_DIGITIZER, report, sizeof(report_digitizer_touchpad_mouse_t));
+}
+#endif
 
 /* ---------------------------------------------------------
  *                   Console functions

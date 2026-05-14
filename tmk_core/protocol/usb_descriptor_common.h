@@ -34,6 +34,17 @@
 #endif
 
 /////////////////////
+// macOS Scroll Resolution (units per inch)
+// Lower value = more sensitive scrolling (default: 200 for 2x Apple sensitivity)
+// Apple trackpads use 400, but smaller trackpads need lower values
+
+#ifdef POINTING_DEVICE_MACOS_SCROLL_RESOLUTION
+#    ifndef POINTING_DEVICE_MACOS_SCROLL_UNITS_PER_INCH
+#        define POINTING_DEVICE_MACOS_SCROLL_UNITS_PER_INCH 200
+#    endif
+#endif
+
+/////////////////////
 // Hires Scroll Defaults
 
 #ifdef POINTING_DEVICE_HIRES_SCROLL_ENABLE

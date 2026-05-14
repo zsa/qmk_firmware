@@ -81,4 +81,52 @@ void digitizer_set_position(float x, float y);
 
 void host_digitizer_send(digitizer_t *digitizer);
 
+#ifdef DIGITIZER_MODE_TOUCHPAD
+#    include "report.h"
+
+/**
+ * \brief Weak hook called once during keyboard_post_init_quantum().
+ *
+ * A touchpad driver module overrides this with a strong implementation
+ * to initialize sensor hardware. Default is a no-op.
+ */
+void digitizer_touchpad_init(void);
+
+/**
+ * \brief Weak hook called from keyboard_task() each iteration.
+ *
+ * A touchpad driver module overrides this to read the sensor and emit
+ * USB reports. Return true if any report was sent (drives the activity
+ * tracker). Default is a no-op returning false.
+ */
+bool digitizer_touchpad_task(void);
+
+/**
+ * \brief Current host-selected input mode.
+ *
+ * 0 = Mouse (boot mode, default per Microsoft PTP spec)
+ * 3 = Windows Precision Touchpad
+ *
+ * Set by the host writing feature report 0x04. Drivers consult this each
+ * task tick to decide which send_* function to call.
+ */
+uint8_t digitizer_touchpad_get_input_mode(void);
+
+/**
+ * \brief Send a PTP multi-touch report.
+ *
+ * Routed through USB_ENDPOINT_IN_DIGITIZER. The caller owns the report
+ * struct (typically a local variable in the task hook).
+ */
+void send_digitizer_touchpad(report_digitizer_touchpad_t *report);
+
+/**
+ * \brief Send a boot-mouse fallback report (report ID 0x06).
+ *
+ * Used when digitizer_touchpad_get_input_mode() returns 0.
+ */
+void send_digitizer_touchpad_mouse(report_digitizer_touchpad_mouse_t *report);
+
+#endif // DIGITIZER_MODE_TOUCHPAD
+
 /** \} */
