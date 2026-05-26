@@ -311,7 +311,7 @@ const USB_Descriptor_HIDReport_Datatype_t PROGMEM SharedReport[] = {
 #    endif
 #endif
 
-#ifdef DIGITIZER_ENABLE
+#if defined(DIGITIZER_ENABLE) && !defined(DIGITIZER_MODE_TOUCHPAD)
 #    ifndef DIGITIZER_SHARED_EP
 const USB_Descriptor_HIDReport_Datatype_t PROGMEM DigitizerReport[] = {
 #    elif !defined(SHARED_REPORT_STARTED)
@@ -405,8 +405,103 @@ const USB_Descriptor_HIDReport_Datatype_t PROGMEM SharedReport[] = {
         HID_RI_INPUT(8, HID_IOF_DATA | HID_IOF_VARIABLE | HID_IOF_ABSOLUTE),               \
         HID_RI_POP(0),                                                                     \
     HID_RI_END_COLLECTION(0)
+#endif // DIGITIZER_MODE_TOUCHPAD (macros only - report decl relocated below after SharedReport closes)
 
-// Digitizer/Touchpad HID Descriptor
+#if defined(SHARED_EP_ENABLE) && !defined(SHARED_REPORT_STARTED)
+const USB_Descriptor_HIDReport_Datatype_t PROGMEM SharedReport[] = {
+#endif
+
+#ifdef EXTRAKEY_ENABLE
+    HID_RI_USAGE_PAGE(8, 0x01),           // Generic Desktop
+    HID_RI_USAGE(8, 0x80),                // System Control
+    HID_RI_COLLECTION(8, 0x01),           // Application
+        HID_RI_REPORT_ID(8, REPORT_ID_SYSTEM),
+        HID_RI_USAGE_MINIMUM(8, 0x01),    // Pointer
+        HID_RI_USAGE_MAXIMUM(16, 0x00B7), // System Display LCD Autoscale
+        HID_RI_LOGICAL_MINIMUM(8, 0x01),
+        HID_RI_LOGICAL_MAXIMUM(16, 0x00B7),
+        HID_RI_REPORT_COUNT(8, 1),
+        HID_RI_REPORT_SIZE(8, 16),
+        HID_RI_INPUT(8, HID_IOF_DATA | HID_IOF_ARRAY | HID_IOF_ABSOLUTE),
+    HID_RI_END_COLLECTION(0),
+
+    HID_RI_USAGE_PAGE(8, 0x0C),           // Consumer
+    HID_RI_USAGE(8, 0x01),                // Consumer Control
+    HID_RI_COLLECTION(8, 0x01),           // Application
+        HID_RI_REPORT_ID(8, REPORT_ID_CONSUMER),
+        HID_RI_USAGE_MINIMUM(8, 0x01),    // Consumer Control
+        HID_RI_USAGE_MAXIMUM(16, 0x02A0), // AC Desktop Show All Applications
+        HID_RI_LOGICAL_MINIMUM(8, 0x01),
+        HID_RI_LOGICAL_MAXIMUM(16, 0x02A0),
+        HID_RI_REPORT_COUNT(8, 1),
+        HID_RI_REPORT_SIZE(8, 16),
+        HID_RI_INPUT(8, HID_IOF_DATA | HID_IOF_ARRAY | HID_IOF_ABSOLUTE),
+    HID_RI_END_COLLECTION(0),
+#endif
+
+#ifdef PROGRAMMABLE_BUTTON_ENABLE
+    HID_RI_USAGE_PAGE(8, 0x0C),            // Consumer
+    HID_RI_USAGE(8, 0x01),                 // Consumer Control
+    HID_RI_COLLECTION(8, 0x01),            // Application
+        HID_RI_REPORT_ID(8, REPORT_ID_PROGRAMMABLE_BUTTON),
+        HID_RI_USAGE(8, 0x03),             // Programmable Buttons
+        HID_RI_COLLECTION(8, 0x04),        // Named Array
+            HID_RI_USAGE_PAGE(8, 0x09),    // Button
+            HID_RI_USAGE_MINIMUM(8, 0x01), // Button 1
+            HID_RI_USAGE_MAXIMUM(8, 0x20), // Button 32
+            HID_RI_LOGICAL_MINIMUM(8, 0x00),
+            HID_RI_LOGICAL_MAXIMUM(8, 0x01),
+            HID_RI_REPORT_COUNT(8, 32),
+            HID_RI_REPORT_SIZE(8, 1),
+            HID_RI_INPUT(8, HID_IOF_DATA | HID_IOF_VARIABLE | HID_IOF_ABSOLUTE),
+        HID_RI_END_COLLECTION(0),
+    HID_RI_END_COLLECTION(0),
+#endif
+
+#ifdef NKRO_ENABLE
+    HID_RI_USAGE_PAGE(8, 0x01),        // Generic Desktop
+    HID_RI_USAGE(8, 0x06),             // Keyboard
+    HID_RI_COLLECTION(8, 0x01),        // Application
+        HID_RI_REPORT_ID(8, REPORT_ID_NKRO),
+        // Modifiers (8 bits)
+        HID_RI_USAGE_PAGE(8, 0x07),    // Keyboard/Keypad
+        HID_RI_USAGE_MINIMUM(8, 0xE0), // Keyboard Left Control
+        HID_RI_USAGE_MAXIMUM(8, 0xE7), // Keyboard Right GUI
+        HID_RI_LOGICAL_MINIMUM(8, 0x00),
+        HID_RI_LOGICAL_MAXIMUM(8, 0x01),
+        HID_RI_REPORT_COUNT(8, 0x08),
+        HID_RI_REPORT_SIZE(8, 0x01),
+        HID_RI_INPUT(8, HID_IOF_DATA | HID_IOF_VARIABLE | HID_IOF_ABSOLUTE),
+        // Keycodes
+        HID_RI_USAGE_PAGE(8, 0x07),    // Keyboard/Keypad
+        HID_RI_USAGE_MINIMUM(8, 0x00),
+        HID_RI_USAGE_MAXIMUM(8, NKRO_REPORT_BITS * 8 - 1),
+        HID_RI_LOGICAL_MINIMUM(8, 0x00),
+        HID_RI_LOGICAL_MAXIMUM(8, 0x01),
+        HID_RI_REPORT_COUNT(8, NKRO_REPORT_BITS * 8),
+        HID_RI_REPORT_SIZE(8, 0x01),
+        HID_RI_INPUT(8, HID_IOF_DATA | HID_IOF_VARIABLE | HID_IOF_ABSOLUTE),
+
+        // Status LEDs (5 bits)
+        HID_RI_USAGE_PAGE(8, 0x08),    // LED
+        HID_RI_USAGE_MINIMUM(8, 0x01), // Num Lock
+        HID_RI_USAGE_MAXIMUM(8, 0x05), // Kana
+        HID_RI_REPORT_COUNT(8, 0x05),
+        HID_RI_REPORT_SIZE(8, 0x01),
+        HID_RI_OUTPUT(8, HID_IOF_DATA | HID_IOF_VARIABLE | HID_IOF_ABSOLUTE | HID_IOF_NON_VOLATILE),
+        // LED padding (3 bits)
+        HID_RI_REPORT_COUNT(8, 0x01),
+        HID_RI_REPORT_SIZE(8, 0x03),
+        HID_RI_OUTPUT(8, HID_IOF_CONSTANT),
+    HID_RI_END_COLLECTION(0),
+#endif
+
+#ifdef SHARED_EP_ENABLE
+};
+#endif
+
+#ifdef DIGITIZER_MODE_TOUCHPAD
+// Digitizer/Touchpad HID Descriptor (relocated to avoid nesting inside SharedReport)
 const USB_Descriptor_HIDReport_Datatype_t PROGMEM DigitizerTouchpadReport[] = {
     HID_RI_USAGE_PAGE(8, 0x0D),            // Digitizers
     HID_RI_USAGE(8, 0x05),                 // Touchpad
@@ -550,100 +645,7 @@ const USB_Descriptor_HIDReport_Datatype_t PROGMEM DigitizerTouchpadReport[] = {
         HID_RI_END_COLLECTION(0),
     HID_RI_END_COLLECTION(0),
 };
-#endif
-
-#if defined(SHARED_EP_ENABLE) && !defined(SHARED_REPORT_STARTED)
-const USB_Descriptor_HIDReport_Datatype_t PROGMEM SharedReport[] = {
-#endif
-
-#ifdef EXTRAKEY_ENABLE
-    HID_RI_USAGE_PAGE(8, 0x01),           // Generic Desktop
-    HID_RI_USAGE(8, 0x80),                // System Control
-    HID_RI_COLLECTION(8, 0x01),           // Application
-        HID_RI_REPORT_ID(8, REPORT_ID_SYSTEM),
-        HID_RI_USAGE_MINIMUM(8, 0x01),    // Pointer
-        HID_RI_USAGE_MAXIMUM(16, 0x00B7), // System Display LCD Autoscale
-        HID_RI_LOGICAL_MINIMUM(8, 0x01),
-        HID_RI_LOGICAL_MAXIMUM(16, 0x00B7),
-        HID_RI_REPORT_COUNT(8, 1),
-        HID_RI_REPORT_SIZE(8, 16),
-        HID_RI_INPUT(8, HID_IOF_DATA | HID_IOF_ARRAY | HID_IOF_ABSOLUTE),
-    HID_RI_END_COLLECTION(0),
-
-    HID_RI_USAGE_PAGE(8, 0x0C),           // Consumer
-    HID_RI_USAGE(8, 0x01),                // Consumer Control
-    HID_RI_COLLECTION(8, 0x01),           // Application
-        HID_RI_REPORT_ID(8, REPORT_ID_CONSUMER),
-        HID_RI_USAGE_MINIMUM(8, 0x01),    // Consumer Control
-        HID_RI_USAGE_MAXIMUM(16, 0x02A0), // AC Desktop Show All Applications
-        HID_RI_LOGICAL_MINIMUM(8, 0x01),
-        HID_RI_LOGICAL_MAXIMUM(16, 0x02A0),
-        HID_RI_REPORT_COUNT(8, 1),
-        HID_RI_REPORT_SIZE(8, 16),
-        HID_RI_INPUT(8, HID_IOF_DATA | HID_IOF_ARRAY | HID_IOF_ABSOLUTE),
-    HID_RI_END_COLLECTION(0),
-#endif
-
-#ifdef PROGRAMMABLE_BUTTON_ENABLE
-    HID_RI_USAGE_PAGE(8, 0x0C),            // Consumer
-    HID_RI_USAGE(8, 0x01),                 // Consumer Control
-    HID_RI_COLLECTION(8, 0x01),            // Application
-        HID_RI_REPORT_ID(8, REPORT_ID_PROGRAMMABLE_BUTTON),
-        HID_RI_USAGE(8, 0x03),             // Programmable Buttons
-        HID_RI_COLLECTION(8, 0x04),        // Named Array
-            HID_RI_USAGE_PAGE(8, 0x09),    // Button
-            HID_RI_USAGE_MINIMUM(8, 0x01), // Button 1
-            HID_RI_USAGE_MAXIMUM(8, 0x20), // Button 32
-            HID_RI_LOGICAL_MINIMUM(8, 0x00),
-            HID_RI_LOGICAL_MAXIMUM(8, 0x01),
-            HID_RI_REPORT_COUNT(8, 32),
-            HID_RI_REPORT_SIZE(8, 1),
-            HID_RI_INPUT(8, HID_IOF_DATA | HID_IOF_VARIABLE | HID_IOF_ABSOLUTE),
-        HID_RI_END_COLLECTION(0),
-    HID_RI_END_COLLECTION(0),
-#endif
-
-#ifdef NKRO_ENABLE
-    HID_RI_USAGE_PAGE(8, 0x01),        // Generic Desktop
-    HID_RI_USAGE(8, 0x06),             // Keyboard
-    HID_RI_COLLECTION(8, 0x01),        // Application
-        HID_RI_REPORT_ID(8, REPORT_ID_NKRO),
-        // Modifiers (8 bits)
-        HID_RI_USAGE_PAGE(8, 0x07),    // Keyboard/Keypad
-        HID_RI_USAGE_MINIMUM(8, 0xE0), // Keyboard Left Control
-        HID_RI_USAGE_MAXIMUM(8, 0xE7), // Keyboard Right GUI
-        HID_RI_LOGICAL_MINIMUM(8, 0x00),
-        HID_RI_LOGICAL_MAXIMUM(8, 0x01),
-        HID_RI_REPORT_COUNT(8, 0x08),
-        HID_RI_REPORT_SIZE(8, 0x01),
-        HID_RI_INPUT(8, HID_IOF_DATA | HID_IOF_VARIABLE | HID_IOF_ABSOLUTE),
-        // Keycodes
-        HID_RI_USAGE_PAGE(8, 0x07),    // Keyboard/Keypad
-        HID_RI_USAGE_MINIMUM(8, 0x00),
-        HID_RI_USAGE_MAXIMUM(8, NKRO_REPORT_BITS * 8 - 1),
-        HID_RI_LOGICAL_MINIMUM(8, 0x00),
-        HID_RI_LOGICAL_MAXIMUM(8, 0x01),
-        HID_RI_REPORT_COUNT(8, NKRO_REPORT_BITS * 8),
-        HID_RI_REPORT_SIZE(8, 0x01),
-        HID_RI_INPUT(8, HID_IOF_DATA | HID_IOF_VARIABLE | HID_IOF_ABSOLUTE),
-
-        // Status LEDs (5 bits)
-        HID_RI_USAGE_PAGE(8, 0x08),    // LED
-        HID_RI_USAGE_MINIMUM(8, 0x01), // Num Lock
-        HID_RI_USAGE_MAXIMUM(8, 0x05), // Kana
-        HID_RI_REPORT_COUNT(8, 0x05),
-        HID_RI_REPORT_SIZE(8, 0x01),
-        HID_RI_OUTPUT(8, HID_IOF_DATA | HID_IOF_VARIABLE | HID_IOF_ABSOLUTE | HID_IOF_NON_VOLATILE),
-        // LED padding (3 bits)
-        HID_RI_REPORT_COUNT(8, 0x01),
-        HID_RI_REPORT_SIZE(8, 0x03),
-        HID_RI_OUTPUT(8, HID_IOF_CONSTANT),
-    HID_RI_END_COLLECTION(0),
-#endif
-
-#ifdef SHARED_EP_ENABLE
-};
-#endif
+#endif // DIGITIZER_MODE_TOUCHPAD relocated decl
 
 #ifdef RAW_ENABLE
 const USB_Descriptor_HIDReport_Datatype_t PROGMEM RawReport[] = {
