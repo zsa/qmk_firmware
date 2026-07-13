@@ -9,6 +9,9 @@
 #ifdef COMMUNITY_MODULE_DEFAULTS_ENABLE
 #     include "defaults.h"
 #endif
+#ifdef COMMUNITY_MODULE_WIRELESS_ENABLE
+#    include "wireless.h"
+#endif
 
 keyboard_config_t keyboard_config;
 
@@ -126,6 +129,41 @@ layer_state_t layer_state_set_kb(layer_state_t state) {
 #endif
     return state;
 }
+
+#if defined(COMMUNITY_MODULE_WIRELESS_ENABLE) && !defined(VOYAGER_USER_LEDS)
+/* On/off half-period of the BLE discovery-mode blink, in milliseconds. */
+#    define DISCOVERY_BLINK_MS 500
+
+/* Blink the left-half green status LED (G_LED on PB4 = STATUS_LED_2) while the
+ * nRF is in BLE discovery mode. It shares the pin with the layer-1 indicator,
+ * so when discovery ends we restore it to the current layer state. */
+void housekeeping_task_kb(void) {
+    static bool     was_discovering = false;
+    static bool     blink_on        = false;
+    static uint32_t last_toggle_ms  = 0;
+
+#    ifdef COMMUNITY_MODULE_ORYX_ENABLE
+    if (!rawhid_state.status_led_control && keyboard_config.led_level) {
+#    else
+    if (keyboard_config.led_level) {
+#    endif
+        bool discovering = zsa_wireless_discovery_active();
+        if (discovering) {
+            if (timer_elapsed32(last_toggle_ms) >= DISCOVERY_BLINK_MS) {
+                last_toggle_ms = timer_read32();
+                blink_on       = !blink_on;
+                STATUS_LED_2(blink_on);
+            }
+        } else if (was_discovering) {
+            /* Discovery just ended — hand PB4 back to the layer indicator. */
+            STATUS_LED_2(get_highest_layer(layer_state) & (1 << 1));
+        }
+        was_discovering = discovering;
+    }
+
+    housekeeping_task_user();
+}
+#endif
 
 #ifdef RGB_MATRIX_ENABLE
 // clang-format off
