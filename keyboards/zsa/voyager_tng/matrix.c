@@ -91,11 +91,16 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
                 mcp23018_errors     = mcp23018_init_local(false);
 #ifdef RGB_MATRIX_ENABLE
                 rgb_matrix_init();
-                // Required to recover the solid color mode
-                if (rgb_matrix_get_mode() == 1 && rgb_matrix_is_enabled()) {
-                    rgb_matrix_set_color_all(255, 255, 255);
-                }
+                // rgb_matrix_init() re-zeroes the driver's hardware PWM registers but not
+                // its software cache, so set_color() early-returns until a color actually
+                // changes. Zero the cache too so it matches hardware and the next rendered
+                // frame repaints every LED.
+                rgb_matrix_set_color_all(0, 0, 0);
+                rgb_matrix_driver.flush();
 #endif
+            } else {
+                // Probe failed - retry again in ~4s instead of hammering the bus every scan.
+                mcp23018_reset_loop = 0;
             }
         }
     }
