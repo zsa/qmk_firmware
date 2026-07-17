@@ -238,6 +238,10 @@ void is31fl3731_update_led_control_registers(uint8_t index) {
     }
 }
 
+__attribute__((weak)) bool is31fl3731_should_flush(uint8_t index) {
+    return true;
+}
+
 void is31fl3731_flush(void) {
 #ifdef ZSA_RTT_DEBUG // TEMP DEBUG: flush duration/gap probe for the wireless LED-lag hunt
     extern uint32_t zsa_rtt_cycles(void);
@@ -245,6 +249,12 @@ void is31fl3731_flush(void) {
     uint32_t rtt_t0 = zsa_rtt_cycles();
 #endif
     for (uint8_t i = 0; i < IS31FL3731_DRIVER_COUNT; i++) {
+        // A skipped driver's pwm_buffer_dirty is left set (update_pwm_buffers()
+        // only clears it after actually writing), so nothing is lost - the next
+        // permitted flush still sends the latest colors, just later.
+        if (!is31fl3731_should_flush(i)) {
+            continue;
+        }
         is31fl3731_update_pwm_buffers(i);
     }
 #ifdef ZSA_RTT_DEBUG

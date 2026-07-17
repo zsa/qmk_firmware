@@ -95,6 +95,10 @@ void is31fl3731_set_led_control_register(uint8_t index, bool red, bool green, bo
 void is31fl3731_update_pwm_buffers(uint8_t index);
 void is31fl3731_update_led_control_registers(uint8_t index);
 
+// Weak; returns true unconditionally by default. Override to rate-limit or
+// otherwise gate which drivers is31fl3731_flush() actually writes out.
+bool is31fl3731_should_flush(uint8_t index);
+
 void is31fl3731_flush(void);
 
 #define C1_1 0x00
