@@ -25,6 +25,15 @@ static matrix_row_t raw_matrix_right[MATRIX_COLS];
 #ifndef IO_EXPANDER_OP_DELAY
 #    define IO_EXPANDER_OP_DELAY 500
 #endif
+// Minimum spacing between wireless bulk-path right-half reads (in ms). The right half only
+// transmits a fresh snapshot into the nRF's TWIS emulation every 3ms (SNAPSHOT_INTERVAL_MS in
+// ptx_main.c), so the mirror at 0x20 cannot hold data any fresher than that no matter how often
+// we poll it. Scanning faster than this just re-reads identical bytes and burns ~0.63ms of
+// clock-stretched i2c per scan for nothing. Undercutting the snapshot period keeps staleness
+// bounded well below what the snapshot cadence itself already costs.
+#ifndef VOYAGER_RIGHT_SCAN_INTERVAL_MS
+#    define VOYAGER_RIGHT_SCAN_INTERVAL_MS 2
+#endif
 
 // Bulk window select register on the wireless (nRF TWIS-emulated) 0x20 slave.
 // Not a real MCP23018 register - selects the emulated device's fast-path,
@@ -243,27 +252,36 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
     }
 
     if (use_bulk_path) {
-        // Single write + read pair replaces the 7 x (2 writes + 1 read) classic per-row traffic.
-        uint8_t led_bits        = ((uint8_t)!mcp23018_leds[1] << 6) | ((uint8_t)!mcp23018_leds[0] << 7);
-        uint8_t addr            = MCP23018_DEFAULT_ADDRESS << 1;
-        uint8_t tx[2]           = {MCP23018_BULK_WINDOW_REG, led_bits};
-        uint8_t rx[MATRIX_COLS] = {0};
+        static uint32_t last_bulk_read_ms;
+        // Rate-limit only the i2c transaction itself. Skipping it leaves raw_matrix_right (and
+        // therefore changed / current_matrix) exactly as they were - the mirror hasn't produced
+        // new data any faster than SNAPSHOT_INTERVAL_MS anyway, so the held-over values are still
+        // current. Left-side scanning and matrix_io_delay() above are unaffected by this gate.
+        if (timer_elapsed32(last_bulk_read_ms) >= VOYAGER_RIGHT_SCAN_INTERVAL_MS) {
+            last_bulk_read_ms = timer_read32();
 
-        bool bulk_ok = (i2c_transmit(addr, tx, sizeof(tx), VOYAGER_I2C_TIMEOUT) == I2C_STATUS_SUCCESS);
-        if (!bulk_ok) {
-            mcp23018_errors++;
-        } else if (i2c_receive(addr, rx, sizeof(rx), VOYAGER_I2C_TIMEOUT) != I2C_STATUS_SUCCESS) {
-            mcp23018_errors++;
-            bulk_ok = false;
-        }
+            // Single write + read pair replaces the 7 x (2 writes + 1 read) classic per-row traffic.
+            uint8_t led_bits        = ((uint8_t)!mcp23018_leds[1] << 6) | ((uint8_t)!mcp23018_leds[0] << 7);
+            uint8_t addr            = MCP23018_DEFAULT_ADDRESS << 1;
+            uint8_t tx[2]           = {MCP23018_BULK_WINDOW_REG, led_bits};
+            uint8_t rx[MATRIX_COLS] = {0};
 
-        for (uint8_t row = 0; row < MATRIX_COLS; row++) {
-            // On failure report all keys released (like the classic error path's data = 0) —
-            // a zeroed rx would otherwise invert to "all keys pressed".
-            matrix_row_t bulk_data = bulk_ok ? (matrix_row_t)(~(rx[row] & 0b00111111)) : 0;
-            if (raw_matrix_right[row] != bulk_data) {
-                raw_matrix_right[row] = bulk_data;
-                changed               = true;
+            bool bulk_ok = (i2c_transmit(addr, tx, sizeof(tx), VOYAGER_I2C_TIMEOUT) == I2C_STATUS_SUCCESS);
+            if (!bulk_ok) {
+                mcp23018_errors++;
+            } else if (i2c_receive(addr, rx, sizeof(rx), VOYAGER_I2C_TIMEOUT) != I2C_STATUS_SUCCESS) {
+                mcp23018_errors++;
+                bulk_ok = false;
+            }
+
+            for (uint8_t row = 0; row < MATRIX_COLS; row++) {
+                // On failure report all keys released (like the classic error path's data = 0) —
+                // a zeroed rx would otherwise invert to "all keys pressed".
+                matrix_row_t bulk_data = bulk_ok ? (matrix_row_t)(~(rx[row] & 0b00111111)) : 0;
+                if (raw_matrix_right[row] != bulk_data) {
+                    raw_matrix_right[row] = bulk_data;
+                    changed               = true;
+                }
             }
         }
     }
