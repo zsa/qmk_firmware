@@ -4,6 +4,7 @@
 #include "voyager_tng.h"
 #include "mcp23018.h"
 #include "i2c_master.h"
+#include "usb_util.h"
 #include <hal.h>
 
 #pragma GCC push_options
@@ -24,6 +25,12 @@ static matrix_row_t raw_matrix_right[MATRIX_COLS];
 #ifndef IO_EXPANDER_OP_DELAY
 #    define IO_EXPANDER_OP_DELAY 500
 #endif
+
+// Bulk window select register on the wireless (nRF TWIS-emulated) 0x20 slave.
+// Not a real MCP23018 register - selects the emulated device's fast-path,
+// which returns all 7 classic PORTB row reads in one transaction. A classic
+// register-0x12 write reverts the slave to per-row emulation.
+#define MCP23018_BULK_WINDOW_REG 0x40
 
 extern bool mcp23018_leds[2];
 extern bool is_launching;
@@ -107,6 +114,12 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
 
     // Scanning left and right side of the keyboard for key presses.
     // Left side is scanned by reading the gpio pins directly, right side is scanned by reading the mcp23018 registers.
+    //
+    // In wireless mode with no USB, the device at 0x20 is the left nRF's TWIS emulation of the
+    // right half (single-axis hardware policy: wireless => never the real MCP23018). It exposes a
+    // bulk window (reg 0x40) that returns all 7 row reads in a single write+read pair instead of
+    // the classic 7 x (2 writes + 1 read) - collapses ~4.3ms of clock-stretched i2c per scan.
+    bool use_bulk_path = !usb_connected_state() && !mcp23018_errors;
 
     matrix_row_t data = 0;
     for (uint8_t row = 0; row <= MCP_ROWS_PER_HAND; row++) {
@@ -135,7 +148,8 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
         }
 
         // Selecting the row on the right side of the keyboard.
-        if (!mcp23018_errors) {
+        // Bulk path selects rows implicitly (all 7 rows come back from one read), so no per-row select here.
+        if (!use_bulk_path && !mcp23018_errors) {
             // select row
             mcp23018_errors += !mcp23018_set_output(MCP23018_DEFAULT_ADDRESS, mcp23018_PORTA, 0b01111111 & ~(1 << (row)));
             mcp23018_errors += !mcp23018_set_output(MCP23018_DEFAULT_ADDRESS, mcp23018_PORTB, ((uint8_t)!mcp23018_leds[1] << 6) | ((uint8_t)!mcp23018_leds[0] << 7));
@@ -143,8 +157,10 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
         // Reading the left side of the keyboard.
         if (row < MCP_ROWS_PER_HAND) {
             // i2c comm incur enough wait time
-            if (mcp23018_errors) {
-                // need wait to settle pin state
+            if (mcp23018_errors || use_bulk_path) {
+                // Classic path gets its settle time for free from the per-row mcp23018 i2c traffic
+                // above. The bulk path (like the error path) issues no i2c between strobe and read,
+                // so it needs the same explicit delay to let the pin state settle.
                 matrix_io_delay();
             }
             // read col data
@@ -180,23 +196,52 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
         }
 
         // Reading the right side of the keyboard.
-        if (!mcp23018_errors) {
-            for (uint16_t i = 0; i < IO_EXPANDER_OP_DELAY; i++) {
-                __asm__("nop");
+        // Bulk path fills raw_matrix_right in one shot after this loop instead of per-row.
+        if (!use_bulk_path) {
+            if (!mcp23018_errors) {
+                for (uint16_t i = 0; i < IO_EXPANDER_OP_DELAY; i++) {
+                    __asm__("nop");
+                }
+                uint8_t rx;
+                mcp23018_errors += !mcp23018_readPins(MCP23018_DEFAULT_ADDRESS, mcp23018_PORTB, &rx);
+                data = ~(rx & 0b00111111);
+                for (uint16_t i = 0; i < IO_EXPANDER_OP_DELAY; i++) {
+                    __asm__("nop");
+                }
+            } else {
+                data = 0;
             }
-            uint8_t rx;
-            mcp23018_errors += !mcp23018_readPins(MCP23018_DEFAULT_ADDRESS, mcp23018_PORTB, &rx);
-            data = ~(rx & 0b00111111);
-            for (uint16_t i = 0; i < IO_EXPANDER_OP_DELAY; i++) {
-                __asm__("nop");
+
+            if (raw_matrix_right[row] != data) {
+                raw_matrix_right[row] = data;
+                changed               = true;
             }
-        } else {
-            data = 0;
+        }
+    }
+
+    if (use_bulk_path) {
+        // Single write + read pair replaces the 7 x (2 writes + 1 read) classic per-row traffic.
+        uint8_t led_bits        = ((uint8_t)!mcp23018_leds[1] << 6) | ((uint8_t)!mcp23018_leds[0] << 7);
+        uint8_t addr            = MCP23018_DEFAULT_ADDRESS << 1;
+        uint8_t tx[2]           = {MCP23018_BULK_WINDOW_REG, led_bits};
+        uint8_t rx[MATRIX_COLS] = {0};
+
+        bool bulk_ok = (i2c_transmit(addr, tx, sizeof(tx), VOYAGER_I2C_TIMEOUT) == I2C_STATUS_SUCCESS);
+        if (!bulk_ok) {
+            mcp23018_errors++;
+        } else if (i2c_receive(addr, rx, sizeof(rx), VOYAGER_I2C_TIMEOUT) != I2C_STATUS_SUCCESS) {
+            mcp23018_errors++;
+            bulk_ok = false;
         }
 
-        if (raw_matrix_right[row] != data) {
-            raw_matrix_right[row] = data;
-            changed               = true;
+        for (uint8_t row = 0; row < MATRIX_COLS; row++) {
+            // On failure report all keys released (like the classic error path's data = 0) —
+            // a zeroed rx would otherwise invert to "all keys pressed".
+            matrix_row_t bulk_data = bulk_ok ? (matrix_row_t)(~(rx[row] & 0b00111111)) : 0;
+            if (raw_matrix_right[row] != bulk_data) {
+                raw_matrix_right[row] = bulk_data;
+                changed               = true;
+            }
         }
     }
 
