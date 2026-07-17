@@ -89,21 +89,44 @@ void matrix_init_custom(void) {
 
 bool matrix_scan_custom(matrix_row_t current_matrix[]) {
     bool changed = false;
+#ifdef ZSA_RTT_DEBUG // TEMP DEBUG: trace mcp23018 error/recovery transitions (hotplug flash hunt)
+    extern void    zsa_rtt_event(const char *name);
+    static uint8_t rtt_prev_errors;
+    if (!rtt_prev_errors && mcp23018_errors) {
+        zsa_rtt_event("mcp: errors 0 -> nonzero (right half declared gone)");
+    }
+    rtt_prev_errors = mcp23018_errors;
+#endif
     // Attempt to reset the mcp23018 if it's not initialized
     if (mcp23018_errors) {
         if (++mcp23018_reset_loop > 0x1FFF) {
-            if (io_expander_ready()) {
+            bool rtt_probe_ok = io_expander_ready();
+#ifdef ZSA_RTT_DEBUG // TEMP DEBUG
+            zsa_rtt_event(rtt_probe_ok ? "mcp: probe OK -> recovery + rgb_matrix_init"
+                                       : "mcp: probe failed, still gone");
+#endif
+            if (rtt_probe_ok) {
                 // If we managed to initialize the mcp23018 - we need to reinitialize the matrix / layer state. During an electric discharge the i2c peripherals might be in a weird state. Giving a delay and resetting the MCU allows to recover from this.
                 mcp23018_reset_loop = 0;
                 mcp23018_errors     = mcp23018_init_local(false);
 #ifdef RGB_MATRIX_ENABLE
-                rgb_matrix_init();
-                // rgb_matrix_init() re-zeroes the driver's hardware PWM registers but not
-                // its software cache, so set_color() early-returns until a color actually
-                // changes. Zero the cache too so it matches hardware and the next rendered
-                // frame repaints every LED.
-                rgb_matrix_set_color_all(0, 0, 0);
-                rgb_matrix_driver.flush();
+                // Re-initing the LED driver is the ESD remedy this recovery exists for, and
+                // it costs ~35ms of dark LEDs (is31fl3731_init() zeroes the hardware PWM
+                // registers, then waits). That's only worth paying on the wired bus, where
+                // 0x20 is the real expander and its disappearance means the bus really did
+                // get scrambled. In wireless mode 0x20 is the nRF's emulation of the right
+                // half, which comes and goes routinely (link drop, out of range) with the
+                // left-side IS31 completely unaffected - so re-initing there just flashes
+                // the matrix for no reason.
+                if (usb_connected_state()) {
+                    rgb_matrix_init();
+                    // rgb_matrix_init() re-zeroes the driver's hardware PWM registers but not
+                    // its software cache, so set_color() early-returns until a color actually
+                    // changes. Zero the cache too so it matches hardware and the next rendered
+                    // frame repaints every LED.
+                    rgb_matrix_set_color_all(0, 0, 0);
+                    rgb_matrix_driver.flush();
+                }
 #endif
             } else {
                 // Probe failed - retry again in ~4s instead of hammering the bus every scan.
