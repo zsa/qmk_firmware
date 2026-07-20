@@ -27,4 +27,13 @@ typedef union {
 
 extern keyboard_config_t keyboard_config;
 
+#ifndef VOYAGER_I2C_TIMEOUT
+#    define VOYAGER_I2C_TIMEOUT 100
+#endif
+
 bool is_transport_connected(void);
+
+/* Command the right-half nRF (TWIS slave, 7-bit 0x54) to raise its VBUS
+ * input current limit to its devicetree value. Idempotent; the nPM1300
+ * auto-reverts to the startup limit on VBUS removal. */
+bool voyager_right_nrf_vbus_ilim_high(void);

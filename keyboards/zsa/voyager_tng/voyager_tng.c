@@ -3,6 +3,8 @@
 
 #include QMK_KEYBOARD_H
 
+#include "i2c_master.h"
+
 #ifdef COMMUNITY_MODULE_ORYX_ENABLE
 #    include "oryx.h"
 #endif // COMMUNITY_MODULE_ORYX_ENABLE
@@ -17,6 +19,18 @@ keyboard_config_t keyboard_config;
 
 bool mcp23018_leds[2] = {0, 0};
 bool is_launching     = false;
+
+/* Right-half nRF TWIS command endpoint (also its I2C DFU address). */
+#define RIGHT_NRF_I2C_ADDRESS (0x54 << 1)
+#define RIGHT_NRF_CMD_REG 0x04
+#define RIGHT_NRF_CMD_SET_VBUS_ILIM_HIGH 0x02
+
+/* Deliberately does not touch mcp23018_errors: a NACK from the nRF must not
+ * mark the whole TRRS transport dead. */
+bool voyager_right_nrf_vbus_ilim_high(void) {
+    uint8_t cmd = RIGHT_NRF_CMD_SET_VBUS_ILIM_HIGH;
+    return i2c_write_register(RIGHT_NRF_I2C_ADDRESS, RIGHT_NRF_CMD_REG, &cmd, sizeof(cmd), VOYAGER_I2C_TIMEOUT) == I2C_STATUS_SUCCESS;
+}
 
 #if defined(DEFERRED_EXEC_ENABLE)
 #    if defined(DYNAMIC_MACRO_ENABLE)
