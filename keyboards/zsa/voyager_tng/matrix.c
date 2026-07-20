@@ -50,6 +50,14 @@ uint8_t         mcp23018_errors;
 #ifndef VOYAGER_BUS_PROBE_INTERVAL_MS
 #    define VOYAGER_BUS_PROBE_INTERVAL_MS 1000
 #endif
+// The first init after taking the bus can land while the far side is still
+// mastering - it has up to a lease timeout to notice the grant stopped. A
+// collision during the IODIR writes is not reported as an error (the expander
+// ACKs, then reads back scrambled pin directions), so re-init once more after
+// the far side has certainly released.
+#ifndef VOYAGER_BUS_REINIT_DELAY_MS
+#    define VOYAGER_BUS_REINIT_DELAY_MS 400
+#endif
 
 /* Bus ownership. The TRRS segments do not isolate, so the right half's real
  * expander is reachable whenever the cable is plugged - USB or not. Whoever can
@@ -59,6 +67,8 @@ uint8_t         mcp23018_errors;
 static bool     stm32_owns_right_bus = true;
 static uint8_t  mcp23018_addr        = MCP23018_DEFAULT_ADDRESS;
 static uint32_t last_bus_probe_ms;
+static uint32_t bus_reinit_at_ms;
+static bool     bus_reinit_pending;
 
 uint8_t mcp23018_init_local(bool first_run);
 
@@ -83,6 +93,41 @@ static void bus_ownership_task(void) {
     mcp23018_addr        = phy_present ? MCP23018_DEFAULT_ADDRESS : MCP23018_MIRROR_ADDRESS;
     mcp23018_reset_loop  = 0;
     mcp23018_errors      = mcp23018_init_local(false);
+    bus_reinit_pending   = true;
+    bus_reinit_at_ms     = timer_read32();
+#ifdef ZSA_RTT_DEBUG // TEMP DEBUG
+    extern void zsa_rtt_event3(const char *name, int a, int b, int c);
+    zsa_rtt_event3(phy_present ? "bus: -> STM32 owns (phy)" : "bus: -> right owns (mirror)", mcp23018_addr, mcp23018_errors, 0);
+#endif
+}
+
+// Second init on a bus the far side has certainly released by now.
+static void bus_reinit_task(void) {
+    if (!bus_reinit_pending || timer_elapsed32(bus_reinit_at_ms) < VOYAGER_BUS_REINIT_DELAY_MS) {
+        return;
+    }
+    bus_reinit_pending  = false;
+    mcp23018_reset_loop = 0;
+    mcp23018_errors     = mcp23018_init_local(false);
+#ifdef RGB_MATRIX_ENABLE
+    // Driver index 1 now addresses a different physical chip than before the
+    // handoff - the real IS31 or the left nRF's mirror - and its hardware state
+    // (shutdown bit, page, LED control registers) was never established. Re-init
+    // here rather than at the ownership change so the 150+ register writes land
+    // on a bus the far side has released.
+    rgb_matrix_init();
+    // init zeroes the hardware PWM registers but not the driver's software
+    // cache, so set_color() would early-return until a colour changes. Zero the
+    // cache to match, and the next rendered frame repaints every LED.
+    rgb_matrix_set_color_all(0, 0, 0);
+    rgb_matrix_driver.flush();
+#endif
+#ifdef ZSA_RTT_DEBUG // TEMP DEBUG
+    extern void zsa_rtt_event3(const char *name, int a, int b, int c);
+    // rows here are what the expander reported BEFORE this re-init: non-zero
+    // with errors==0 is the corrupted-config signature.
+    zsa_rtt_event3("bus: delayed reinit", mcp23018_errors, raw_matrix_right[0], raw_matrix_right[1]);
+#endif
 }
 
 bool io_expander_ready(void) {
@@ -138,6 +183,7 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
     bool changed = false;
 
     bus_ownership_task();
+    bus_reinit_task();
 #ifdef ZSA_RTT_DEBUG // TEMP DEBUG: trace mcp23018 error/recovery transitions (hotplug flash hunt)
     extern void    zsa_rtt_event(const char *name);
     static uint8_t rtt_prev_errors;
