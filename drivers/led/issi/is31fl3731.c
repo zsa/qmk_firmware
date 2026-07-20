@@ -32,7 +32,7 @@
 #    define IS31FL3731_I2C_PERSISTENCE 0
 #endif
 
-const uint8_t i2c_addresses[IS31FL3731_DRIVER_COUNT] = {
+uint8_t i2c_addresses[IS31FL3731_DRIVER_COUNT] = {
     IS31FL3731_I2C_ADDRESS_1,
 #ifdef IS31FL3731_I2C_ADDRESS_2
     IS31FL3731_I2C_ADDRESS_2,
@@ -44,6 +44,12 @@ const uint8_t i2c_addresses[IS31FL3731_DRIVER_COUNT] = {
 #    endif
 #endif
 };
+
+void is31fl3731_set_i2c_address(uint8_t index, uint8_t address) {
+    if (index < IS31FL3731_DRIVER_COUNT) {
+        i2c_addresses[index] = address;
+    }
+}
 
 // These buffers match the IS31FL3731 PWM registers 0x24-0xB3.
 // Storing them like this is optimal for I2C transfers to the registers.

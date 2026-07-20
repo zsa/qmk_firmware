@@ -47,9 +47,47 @@ extern bool is_launching;
 static uint16_t mcp23018_reset_loop;
 uint8_t         mcp23018_errors;
 
+#ifndef VOYAGER_BUS_PROBE_INTERVAL_MS
+#    define VOYAGER_BUS_PROBE_INTERVAL_MS 1000
+#endif
+
+/* Bus ownership. The TRRS segments do not isolate, so the right half's real
+ * expander is reachable whenever the cable is plugged - USB or not. Whoever can
+ * see it owns the bus, and the other side must stay off it entirely; USB state
+ * is not the discriminator. Defaults to "ours" so no grant goes out before the
+ * first probe resolves. */
+static bool     stm32_owns_right_bus = true;
+static uint8_t  mcp23018_addr        = MCP23018_DEFAULT_ADDRESS;
+static uint32_t last_bus_probe_ms;
+
+uint8_t mcp23018_init_local(bool first_run);
+
+bool zsa_stm32_owns_right_bus(void) {
+    return stm32_owns_right_bus;
+}
+
+static void bus_ownership_task(void) {
+    if (timer_elapsed32(last_bus_probe_ms) < VOYAGER_BUS_PROBE_INTERVAL_MS) {
+        return;
+    }
+    last_bus_probe_ms = timer_read32();
+
+    // 0x20 is now exclusively the real chip - the mirror moved to 0x27 - so an
+    // ACK here means the physical right half is on the bus, nothing else.
+    bool phy_present = (i2c_ping_address(MCP23018_DEFAULT_ADDRESS << 1, VOYAGER_I2C_TIMEOUT) == I2C_STATUS_SUCCESS);
+    if (phy_present == stm32_owns_right_bus) {
+        return;
+    }
+
+    stm32_owns_right_bus = phy_present;
+    mcp23018_addr        = phy_present ? MCP23018_DEFAULT_ADDRESS : MCP23018_MIRROR_ADDRESS;
+    mcp23018_reset_loop  = 0;
+    mcp23018_errors      = mcp23018_init_local(false);
+}
+
 bool io_expander_ready(void) {
     uint8_t tx;
-    return mcp23018_readPins(MCP23018_DEFAULT_ADDRESS, mcp23018_PORTA, &tx);
+    return mcp23018_readPins(mcp23018_addr, mcp23018_PORTA, &tx);
 }
 
 uint8_t mcp23018_init_local(bool first_run) {
@@ -65,8 +103,8 @@ uint8_t mcp23018_init_local(bool first_run) {
     palSetLineMode(B7, PAL_MODE_ALTERNATE(4) | PAL_OUTPUT_TYPE_OPENDRAIN);
 
     uint8_t errors = 0;
-    errors += !mcp23018_set_config(MCP23018_DEFAULT_ADDRESS, mcp23018_PORTA, 0b00000000);
-    errors += !mcp23018_set_config(MCP23018_DEFAULT_ADDRESS, mcp23018_PORTB, 0b00111111);
+    errors += !mcp23018_set_config(mcp23018_addr, mcp23018_PORTA, 0b00000000);
+    errors += !mcp23018_set_config(mcp23018_addr, mcp23018_PORTB, 0b00111111);
 
     return errors;
 }
@@ -98,6 +136,8 @@ void matrix_init_custom(void) {
 
 bool matrix_scan_custom(matrix_row_t current_matrix[]) {
     bool changed = false;
+
+    bus_ownership_task();
 #ifdef ZSA_RTT_DEBUG // TEMP DEBUG: trace mcp23018 error/recovery transitions (hotplug flash hunt)
     extern void    zsa_rtt_event(const char *name);
     static uint8_t rtt_prev_errors;
@@ -151,7 +191,7 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
     // right half (single-axis hardware policy: wireless => never the real MCP23018). It exposes a
     // bulk window (reg 0x40) that returns all 7 row reads in a single write+read pair instead of
     // the classic 7 x (2 writes + 1 read) - collapses ~4.3ms of clock-stretched i2c per scan.
-    bool use_bulk_path = !usb_connected_state() && !mcp23018_errors;
+    bool use_bulk_path = !stm32_owns_right_bus && !mcp23018_errors;
 
     matrix_row_t data = 0;
     for (uint8_t row = 0; row <= MCP_ROWS_PER_HAND; row++) {
@@ -183,8 +223,8 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
         // Bulk path selects rows implicitly (all 7 rows come back from one read), so no per-row select here.
         if (!use_bulk_path && !mcp23018_errors) {
             // select row
-            mcp23018_errors += !mcp23018_set_output(MCP23018_DEFAULT_ADDRESS, mcp23018_PORTA, 0b01111111 & ~(1 << (row)));
-            mcp23018_errors += !mcp23018_set_output(MCP23018_DEFAULT_ADDRESS, mcp23018_PORTB, ((uint8_t)!mcp23018_leds[1] << 6) | ((uint8_t)!mcp23018_leds[0] << 7));
+            mcp23018_errors += !mcp23018_set_output(mcp23018_addr, mcp23018_PORTA, 0b01111111 & ~(1 << (row)));
+            mcp23018_errors += !mcp23018_set_output(mcp23018_addr, mcp23018_PORTB, ((uint8_t)!mcp23018_leds[1] << 6) | ((uint8_t)!mcp23018_leds[0] << 7));
         }
         // Reading the left side of the keyboard.
         if (row < MCP_ROWS_PER_HAND) {
@@ -235,7 +275,7 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
                     __asm__("nop");
                 }
                 uint8_t rx;
-                mcp23018_errors += !mcp23018_readPins(MCP23018_DEFAULT_ADDRESS, mcp23018_PORTB, &rx);
+                mcp23018_errors += !mcp23018_readPins(mcp23018_addr, mcp23018_PORTB, &rx);
                 data = ~(rx & 0b00111111);
                 for (uint16_t i = 0; i < IO_EXPANDER_OP_DELAY; i++) {
                     __asm__("nop");
@@ -262,7 +302,7 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
 
             // Single write + read pair replaces the 7 x (2 writes + 1 read) classic per-row traffic.
             uint8_t led_bits        = ((uint8_t)!mcp23018_leds[1] << 6) | ((uint8_t)!mcp23018_leds[0] << 7);
-            uint8_t addr            = MCP23018_DEFAULT_ADDRESS << 1;
+            uint8_t addr            = mcp23018_addr << 1;
             uint8_t tx[2]           = {MCP23018_BULK_WINDOW_REG, led_bits};
             uint8_t rx[MATRIX_COLS] = {0};
 

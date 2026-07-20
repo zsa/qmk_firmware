@@ -80,6 +80,10 @@ extern const is31fl3731_led_t PROGMEM g_is31fl3731_leds[IS31FL3731_LED_COUNT];
 
 void is31fl3731_init_drivers(void);
 void is31fl3731_init(uint8_t index);
+/* Retarget a driver index at runtime. Needed where the chip behind an index is
+ * a real device on one transport and an emulated mirror at a different address
+ * on another. */
+void is31fl3731_set_i2c_address(uint8_t index, uint8_t address);
 void is31fl3731_write_register(uint8_t index, uint8_t reg, uint8_t data);
 void is31fl3731_select_page(uint8_t index, uint8_t page);
 

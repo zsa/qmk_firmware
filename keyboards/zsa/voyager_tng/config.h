@@ -11,6 +11,12 @@
 #define IS31FL3731_I2C_ADDRESS_1 IS31FL3731_I2C_ADDRESS_GND
 #define IS31FL3731_I2C_ADDRESS_2 IS31FL3731_I2C_ADDRESS_VCC
 
+/* Left-nRF mirror of the right half's IS31, used in wireless mode so the STM32
+ * stops addressing the real 0x77 across the unisolated TRRS bus. Bus contention
+ * can only pull address bits low, so the mirror must not sit one clear-bit away
+ * from 0x77 or from the left's own 0x74 - 0x73 reaches neither. */
+#define ZSA_RIGHT_LED_MIRROR_ADDRESS 0x73
+
 #define IS31FL3731_I2C_TIMEOUT 5
 
 #define MOUSEKEY_WHEEL_INTERVAL MOUSEKEY_INTERVAL

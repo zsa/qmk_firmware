@@ -10,6 +10,11 @@ extern bool mcp23018_leds[];
 
 #define MCP23018_DEFAULT_ADDRESS 0b0100000
 
+/* Left-nRF mirror of the right half's expander, used in wireless mode so the
+ * STM32 stops addressing the real 0x20 across the unisolated TRRS bus. Bit
+ * pattern picked so no single or double 1->0 corruption reaches 0x20. */
+#define MCP23018_MIRROR_ADDRESS 0b0100111
+
 #define STATUS_LED_1(status) gpio_write_pin(B5, (bool)(status))
 #define STATUS_LED_2(status) gpio_write_pin(B4, (bool)(status))
 #define STATUS_LED_3(status) mcp23018_leds[0] = (bool)(status)
