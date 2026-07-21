@@ -121,6 +121,15 @@ void keyboard_pre_init_kb(void) {
     gpio_write_pin_low(B4);
     gpio_write_pin_low(B3);
 
+    // USB D+ pullup. Wireless: held low until the nRF reports VBUS present.
+    // Non-wireless: no nRF to report VBUS, so asserted unconditionally.
+    gpio_set_pin_output(A15);
+#ifdef COMMUNITY_MODULE_WIRELESS_ENABLE
+    gpio_write_pin_low(A15);
+#else
+    gpio_write_pin_high(A15);
+#endif
+
     keyboard_pre_init_user();
 }
 
@@ -176,6 +185,13 @@ void housekeeping_task_kb(void) {
     }
 
     housekeeping_task_user();
+}
+#endif
+
+#ifdef COMMUNITY_MODULE_WIRELESS_ENABLE
+// Drives the USB D+ pullup from the nRF's reported VBUS state.
+void zsa_wireless_vbus_changed(bool present) {
+    gpio_write_pin(A15, present);
 }
 #endif
 
