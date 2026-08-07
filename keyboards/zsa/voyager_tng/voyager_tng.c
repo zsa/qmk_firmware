@@ -144,7 +144,11 @@ layer_state_t layer_state_set_kb(layer_state_t state) {
     if (is_launching || !keyboard_config.led_level) return state;
     uint8_t layer = get_highest_layer(state);
     STATUS_LED_1(layer & (1 << 0));
-    STATUS_LED_2(layer & (1 << 1));
+#    ifdef COMMUNITY_MODULE_WIRELESS_ENABLE
+    /* PB4 belongs to the pairing blink while it runs. */
+    if (!zsa_wireless_pair_led_active())
+#    endif
+        STATUS_LED_2(layer & (1 << 1));
     STATUS_LED_3(layer & (1 << 2));
 #    if !defined(CAPS_LOCK_STATUS)
     STATUS_LED_4(layer & (1 << 3));
@@ -154,37 +158,23 @@ layer_state_t layer_state_set_kb(layer_state_t state) {
 }
 
 #if defined(COMMUNITY_MODULE_WIRELESS_ENABLE) && !defined(VOYAGER_USER_LEDS)
-/* On/off half-period of the BLE discovery-mode blink, in milliseconds. */
-#    define DISCOVERY_BLINK_MS 500
-
-/* Blink the left-half green status LED (G_LED on PB4 = STATUS_LED_2) while the
- * nRF is in BLE discovery mode. It shares the pin with the layer-1 indicator,
- * so when discovery ends we restore it to the current layer state. */
-void housekeeping_task_kb(void) {
-    static bool     was_discovering = false;
-    static bool     blink_on        = false;
-    static uint32_t last_toggle_ms  = 0;
-
+/* Drives the left-half green status LED (G_LED on PB4 = STATUS_LED_2) from the
+ * wireless module's pairing blink. It shares the pin with the layer-1
+ * indicator, so RELEASE hands the pin back to the current layer state. */
+void zsa_wireless_pair_led(uint8_t state) {
 #    ifdef COMMUNITY_MODULE_ORYX_ENABLE
-    if (!rawhid_state.status_led_control && keyboard_config.led_level) {
-#    else
-    if (keyboard_config.led_level) {
-#    endif
-        bool discovering = zsa_wireless_discovery_active();
-        if (discovering) {
-            if (timer_elapsed32(last_toggle_ms) >= DISCOVERY_BLINK_MS) {
-                last_toggle_ms = timer_read32();
-                blink_on       = !blink_on;
-                STATUS_LED_2(blink_on);
-            }
-        } else if (was_discovering) {
-            /* Discovery just ended — hand PB4 back to the layer indicator. */
-            STATUS_LED_2(get_highest_layer(layer_state) & (1 << 1));
-        }
-        was_discovering = discovering;
+    if (rawhid_state.status_led_control) {
+        return;
     }
-
-    housekeeping_task_user();
+#    endif
+    if (is_launching || !keyboard_config.led_level) {
+        return;
+    }
+    if (state == ZSA_PAIR_LED_RELEASE) {
+        STATUS_LED_2(get_highest_layer(layer_state) & (1 << 1));
+    } else {
+        STATUS_LED_2(state == ZSA_PAIR_LED_ON);
+    }
 }
 #endif
 
