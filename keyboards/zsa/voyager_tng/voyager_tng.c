@@ -32,6 +32,16 @@ bool voyager_right_nrf_vbus_ilim_high(void) {
     return i2c_write_register(RIGHT_NRF_I2C_ADDRESS, RIGHT_NRF_CMD_REG, &cmd, sizeof(cmd), VOYAGER_I2C_TIMEOUT) == I2C_STATUS_SUCCESS;
 }
 
+#ifdef COMMUNITY_MODULE_WIRELESS_ENABLE
+/* Read the right half's telemetry struct. A plain read, no register pointer:
+ * the slave serves it from offset 0 (see zsa_right_telemetry.h). Same
+ * no-mcp23018_errors treatment as above — the caller decides what an absent
+ * right half means. */
+bool voyager_right_nrf_read_telemetry(struct zsa_right_telemetry *out) {
+    return i2c_receive(RIGHT_NRF_I2C_ADDRESS, (uint8_t *)out, sizeof(*out), VOYAGER_I2C_TIMEOUT) == I2C_STATUS_SUCCESS;
+}
+#endif
+
 #if defined(DEFERRED_EXEC_ENABLE)
 #    if defined(DYNAMIC_MACRO_ENABLE)
 deferred_token  dynamic_macro_token = INVALID_DEFERRED_TOKEN;

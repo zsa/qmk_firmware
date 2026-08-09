@@ -42,3 +42,11 @@ bool is_transport_connected(void);
  * input current limit to its devicetree value. Idempotent; the nPM1300
  * auto-reverts to the startup limit on VBUS removal. */
 bool voyager_right_nrf_vbus_ilim_high(void);
+
+#ifdef COMMUNITY_MODULE_WIRELESS_ENABLE
+#    include "zsa_right_telemetry.h"
+/* Read what the right half says about itself from the same TWIS slave. Only
+ * meaningful while the TRRS cable is plugged and the STM32 masters that bus;
+ * the wireless module gates on zsa_stm32_owns_right_bus() before calling. */
+bool voyager_right_nrf_read_telemetry(struct zsa_right_telemetry *out);
+#endif
