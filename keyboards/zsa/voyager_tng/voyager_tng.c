@@ -23,13 +23,19 @@ bool is_launching     = false;
 /* Right-half nRF TWIS command endpoint (also its I2C DFU address). */
 #define RIGHT_NRF_I2C_ADDRESS (0x54 << 1)
 #define RIGHT_NRF_CMD_REG 0x04
-#define RIGHT_NRF_CMD_SET_VBUS_ILIM_HIGH 0x02
+#define RIGHT_NRF_CMD_SET_CHARGE_LIMITS 0x02
 
 /* Deliberately does not touch mcp23018_errors: a NACK from the nRF must not
  * mark the whole TRRS transport dead. */
-bool voyager_right_nrf_vbus_ilim_high(void) {
-    uint8_t cmd = RIGHT_NRF_CMD_SET_VBUS_ILIM_HIGH;
-    return i2c_write_register(RIGHT_NRF_I2C_ADDRESS, RIGHT_NRF_CMD_REG, &cmd, sizeof(cmd), VOYAGER_I2C_TIMEOUT) == I2C_STATUS_SUCCESS;
+bool voyager_right_nrf_set_charge_limits(uint16_t vbus_limit_ma, uint16_t charge_ma) {
+    /* cmd, then the two currents as LE16 — the same payload CMD_CHARGE_LIMITS
+     * carries to the left half, so one policy reaches both the same way. */
+    uint8_t payload[5] = {
+        RIGHT_NRF_CMD_SET_CHARGE_LIMITS,
+        (uint8_t)(vbus_limit_ma & 0xFF), (uint8_t)(vbus_limit_ma >> 8),
+        (uint8_t)(charge_ma & 0xFF),     (uint8_t)(charge_ma >> 8),
+    };
+    return i2c_write_register(RIGHT_NRF_I2C_ADDRESS, RIGHT_NRF_CMD_REG, payload, sizeof(payload), VOYAGER_I2C_TIMEOUT) == I2C_STATUS_SUCCESS;
 }
 
 #ifdef COMMUNITY_MODULE_WIRELESS_ENABLE

@@ -38,10 +38,11 @@ extern keyboard_config_t keyboard_config;
 
 bool is_transport_connected(void);
 
-/* Command the right-half nRF (TWIS slave, 7-bit 0x54) to raise its VBUS
- * input current limit to its devicetree value. Idempotent; the nPM1300
- * auto-reverts to the startup limit on VBUS removal. */
-bool voyager_right_nrf_vbus_ilim_high(void);
+/* Command the right-half nRF (TWIS slave, 7-bit 0x54) to apply a VBUS input
+ * current limit and a charge current, both in mA. The right clamps them to its
+ * own devicetree. Idempotent; the nPM1300 reverts the input limit to its
+ * startup value by itself on VBUS removal. */
+bool voyager_right_nrf_set_charge_limits(uint16_t vbus_limit_ma, uint16_t charge_ma);
 
 #ifdef COMMUNITY_MODULE_WIRELESS_ENABLE
 #    include "zsa_right_telemetry.h"
