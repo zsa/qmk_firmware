@@ -199,6 +199,18 @@ void zsa_wireless_pair_led(uint8_t state) {
 void zsa_wireless_vbus_changed(bool present) {
     gpio_write_pin(A15, present);
 }
+
+/* Ignition's "soft-enter DFU" flag: RTC backup register 10, read and cleared
+ * once by the bootloader on the next boot. The backup domain survives a system
+ * reset. ChibiOS enables the PWR clock and leaves PWR_CR_DBP set, but set it
+ * again so the write does not depend on that. */
+#define IGNITION_DFU_MAGIC 0x424C
+
+void zsa_wireless_enter_bootloader(void) {
+    PWR->CR |= PWR_CR_DBP;
+    RTC->BKP10R = IGNITION_DFU_MAGIC;
+    NVIC_SystemReset();
+}
 #endif
 
 #ifdef RGB_MATRIX_ENABLE
