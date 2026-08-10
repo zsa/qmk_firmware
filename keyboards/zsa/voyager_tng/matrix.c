@@ -69,6 +69,13 @@ static uint8_t  mcp23018_addr        = MCP23018_DEFAULT_ADDRESS;
 static uint32_t last_bus_probe_ms;
 static uint32_t bus_reinit_at_ms;
 static bool     bus_reinit_pending;
+static uint8_t  bus_probe_timeouts;
+
+// Consecutive probe timeouts before the bus is declared contended. One is not
+// enough: a single timeout can come from noise or from the far side mid-release.
+#ifndef VOYAGER_BUS_TIMEOUT_STREAK
+#    define VOYAGER_BUS_TIMEOUT_STREAK 2
+#endif
 
 uint8_t mcp23018_init_local(bool first_run);
 
@@ -84,7 +91,29 @@ static void bus_ownership_task(void) {
 
     // 0x20 is now exclusively the real chip - the mirror moved to 0x27 - so an
     // ACK here means the physical right half is on the bus, nothing else.
-    bool phy_present = (i2c_ping_address(MCP23018_DEFAULT_ADDRESS << 1, VOYAGER_I2C_TIMEOUT) == I2C_STATUS_SUCCESS);
+    //
+    // Three outcomes, not two. SUCCESS is the right half answering. ERROR is a
+    // clean NAK: the wire works and nothing is on it, so the right half may
+    // keep the bus. TIMEOUT is the bus itself being unusable - held low, or a
+    // second master driving it - and must NOT be read as "absent", because
+    // that keeps the grant alive and leaves both halves mastering, which is a
+    // state the probe can never see its way out of: the bus stays stuck, so
+    // every later probe times out too. Claim ownership instead, which stops
+    // the grant and makes the right half release within a lease timeout. If it
+    // turns out nothing was there, the next probe NAKs and hands the bus back.
+    i2c_status_t probe     = i2c_ping_address(MCP23018_DEFAULT_ADDRESS << 1, VOYAGER_I2C_TIMEOUT);
+    bool         contended = false;
+
+    if (probe == I2C_STATUS_TIMEOUT) {
+        if (bus_probe_timeouts < VOYAGER_BUS_TIMEOUT_STREAK) {
+            bus_probe_timeouts++;
+        }
+        contended = (bus_probe_timeouts >= VOYAGER_BUS_TIMEOUT_STREAK);
+    } else {
+        bus_probe_timeouts = 0;
+    }
+
+    bool phy_present = (probe == I2C_STATUS_SUCCESS) || contended;
     if (phy_present == stm32_owns_right_bus) {
         return;
     }
