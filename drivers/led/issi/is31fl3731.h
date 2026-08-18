@@ -95,6 +95,19 @@ void is31fl3731_set_led_control_register(uint8_t index, bool red, bool green, bo
 void is31fl3731_update_pwm_buffers(uint8_t index);
 void is31fl3731_update_led_control_registers(uint8_t index);
 
+// Weak; returns true unconditionally by default. Override to rate-limit or
+// otherwise gate which drivers is31fl3731_flush() actually writes out.
+bool is31fl3731_should_flush(uint8_t index);
+
+// Re-runs the boot init for one driver and rewrites its LED-control page from
+// the software cache, then marks its PWM buffer dirty so the next frame
+// repaints. Used to recover a driver that lost its state.
+void is31fl3731_resync(uint8_t index);
+
+// Reads the LED-control registers back and compares them with the software
+// cache. False on any I2C error or mismatch.
+bool is31fl3731_verify(uint8_t index);
+
 void is31fl3731_flush(void);
 
 #define C1_1 0x00

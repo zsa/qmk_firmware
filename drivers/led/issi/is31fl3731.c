@@ -20,6 +20,7 @@
 #include "i2c_master.h"
 #include "gpio.h"
 #include "wait.h"
+#include <string.h>
 
 #define IS31FL3731_PWM_REGISTER_COUNT 144
 #define IS31FL3731_LED_CONTROL_REGISTER_COUNT 18
@@ -238,8 +239,38 @@ void is31fl3731_update_led_control_registers(uint8_t index) {
     }
 }
 
+void is31fl3731_resync(uint8_t index) {
+    is31fl3731_init(index);
+
+    driver_buffers[index].led_control_buffer_dirty = true;
+    is31fl3731_update_led_control_registers(index);
+
+    driver_buffers[index].pwm_buffer_dirty = true;
+}
+
+bool is31fl3731_verify(uint8_t index) {
+    uint8_t buffer[IS31FL3731_LED_CONTROL_REGISTER_COUNT];
+
+    // Page 0 is the steady state after init, so no page switch is needed.
+    if (i2c_read_register(i2c_addresses[index] << 1, IS31FL3731_FRAME_REG_LED_CONTROL, buffer, sizeof(buffer), IS31FL3731_I2C_TIMEOUT) != I2C_STATUS_SUCCESS) {
+        return false;
+    }
+
+    return memcmp(buffer, driver_buffers[index].led_control_buffer, sizeof(buffer)) == 0;
+}
+
+__attribute__((weak)) bool is31fl3731_should_flush(uint8_t index) {
+    return true;
+}
+
 void is31fl3731_flush(void) {
     for (uint8_t i = 0; i < IS31FL3731_DRIVER_COUNT; i++) {
+        // A skipped driver's pwm_buffer_dirty is left set (update_pwm_buffers()
+        // only clears it after actually writing), so nothing is lost - the next
+        // permitted flush still sends the latest colors, just later.
+        if (!is31fl3731_should_flush(i)) {
+            continue;
+        }
         is31fl3731_update_pwm_buffers(i);
     }
 }

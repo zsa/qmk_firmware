@@ -4,6 +4,8 @@
 
 #include QMK_KEYBOARD_H
 
+#include "busdev.h"
+
 #ifdef COMMUNITY_MODULE_ORYX_ENABLE
 #    include "oryx.h"
 #endif // COMMUNITY_MODULE_ORYX_ENABLE
@@ -12,6 +14,38 @@
 #endif
 
 keyboard_config_t keyboard_config;
+
+#if defined(RGB_MATRIX_ENABLE) && defined(IS31FL3731_I2C_ADDRESS_2)
+#    define VOYAGER_RIGHT_LED_DRIVER 1
+
+static busdev_id_t led_dev = BUSDEV_NONE;
+
+static busdev_step_t led_right_init_step(uint8_t addr, uint8_t step, uint16_t *delay_ms) {
+    is31fl3731_resync(VOYAGER_RIGHT_LED_DRIVER);
+    return BUSDEV_STEP_DONE;
+}
+
+static bool led_right_verify(uint8_t addr) {
+    return is31fl3731_verify(VOYAGER_RIGHT_LED_DRIVER);
+}
+
+static const busdev_desc_t led_right_desc = {
+    .name               = "is31_right",
+    .addr               = IS31FL3731_I2C_ADDRESS_2 << 1,
+    .settle_ms          = 10,
+    .verify_interval_ms = 250,
+    .probe_timeout_ms   = 5,
+    .max_err_streak     = 1,
+    .probe              = NULL,
+    .init_step          = led_right_init_step,
+    .verify             = led_right_verify,
+    .on_state           = NULL,
+};
+
+bool is31fl3731_should_flush(uint8_t index) {
+    return index != VOYAGER_RIGHT_LED_DRIVER || busdev_is_up(led_dev);
+}
+#endif
 
 bool mcp23018_leds[2] = {0, 0};
 bool is_launching     = false;
@@ -281,6 +315,9 @@ bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
 void keyboard_post_init_kb(void) {
 #ifdef RGB_MATRIX_ENABLE
     rgb_matrix_enable_noeeprom();
+#endif
+#ifdef VOYAGER_RIGHT_LED_DRIVER
+    led_dev = busdev_register(&led_right_desc);
 #endif
 
     keyboard_config.raw = eeconfig_read_kb();

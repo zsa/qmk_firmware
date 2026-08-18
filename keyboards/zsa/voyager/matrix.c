@@ -5,7 +5,7 @@
 #include "voyager.h"
 #include "mcp23018.h"
 #include "i2c_master.h"
-#include <hal.h>
+#include "busdev.h"
 
 #pragma GCC push_options
 #pragma GCC optimize("-O3")
@@ -15,11 +15,8 @@ extern matrix_row_t raw_matrix[MATRIX_ROWS]; // raw values
 static matrix_row_t raw_matrix_right[MATRIX_COLS];
 
 #define MCP_ROWS_PER_HAND (MATRIX_ROWS / 2)
-#ifndef I2C_DRIVER
-#    define I2C_DRIVER I2CD1
-#endif
 #ifndef VOYAGER_I2C_TIMEOUT
-#    define VOYAGER_I2C_TIMEOUT 100
+#    define VOYAGER_I2C_TIMEOUT 5
 #endif
 // Delay between each i2c io expander ops (in MCU cycles)
 #ifndef IO_EXPANDER_OP_DELAY
@@ -29,32 +26,51 @@ static matrix_row_t raw_matrix_right[MATRIX_COLS];
 extern bool mcp23018_leds[2];
 extern bool is_launching;
 
-static uint16_t mcp23018_reset_loop;
-uint8_t         mcp23018_errors;
+static busdev_id_t expander_dev = BUSDEV_NONE;
 
-bool io_expander_ready(void) {
-    uint8_t tx;
-    return mcp23018_readPins(MCP23018_DEFAULT_ADDRESS, mcp23018_PORTA, &tx);
-}
+// Columns physically present on each right-hand matrix row (6..11). A bit set
+// outside this mask cannot come from a key press.
+static const matrix_row_t right_populated_mask[MCP_ROWS_PER_HAND] = {0x3F, 0x3F, 0x3F, 0x3E, 0x04, 0x60};
 
-uint8_t mcp23018_init_local(bool first_run) {
-    if (!first_run) {
-        i2cStop(&I2C_DRIVER);
+static busdev_step_t expander_init_step(uint8_t addr, uint8_t step, uint16_t *delay_ms) {
+    if (!mcp23018_set_config(addr >> 1, mcp23018_PORTA, 0b00000000)) {
+        return BUSDEV_STEP_FAIL;
     }
-    wait_ms(10);
-    // Try releasing special pins for a short time
-    palSetLineMode(B6, PAL_MODE_INPUT);
-    palSetLineMode(B7, PAL_MODE_INPUT);
-    wait_ms(10);
-    palSetLineMode(B6, PAL_MODE_ALTERNATE(4) | PAL_OUTPUT_TYPE_OPENDRAIN);
-    palSetLineMode(B7, PAL_MODE_ALTERNATE(4) | PAL_OUTPUT_TYPE_OPENDRAIN);
-
-    uint8_t errors = 0;
-    errors += !mcp23018_set_config(MCP23018_DEFAULT_ADDRESS, mcp23018_PORTA, 0b00000000);
-    errors += !mcp23018_set_config(MCP23018_DEFAULT_ADDRESS, mcp23018_PORTB, 0b00111111);
-
-    return errors;
+    if (!mcp23018_set_config(addr >> 1, mcp23018_PORTB, 0b00111111)) {
+        return BUSDEV_STEP_FAIL;
+    }
+    return BUSDEV_STEP_DONE;
 }
+
+// Reads IODIRA/IODIRB and GPPUA/GPPUB back and compares them with what
+// expander_init_step() wrote.
+static bool expander_verify(uint8_t addr) {
+    uint8_t buf[2];
+
+    if (i2c_read_register(addr, 0x00, buf, sizeof(buf), VOYAGER_I2C_TIMEOUT) != I2C_STATUS_SUCCESS) {
+        return false;
+    }
+    if (buf[0] != 0x00 || buf[1] != 0x3F) {
+        return false;
+    }
+    if (i2c_read_register(addr, 0x0C, buf, sizeof(buf), VOYAGER_I2C_TIMEOUT) != I2C_STATUS_SUCCESS) {
+        return false;
+    }
+    return buf[0] == 0x00 && buf[1] == 0x3F;
+}
+
+static const busdev_desc_t expander_desc = {
+    .name               = "mcp23018",
+    .addr               = MCP23018_DEFAULT_ADDRESS << 1,
+    .settle_ms          = 20,
+    .verify_interval_ms = 100,
+    .probe_timeout_ms   = 5,
+    .max_err_streak     = 1,
+    .probe              = NULL,
+    .init_step          = expander_init_step,
+    .verify             = expander_verify,
+    .on_state           = NULL,
+};
 
 void matrix_init_custom(void) {
     // outputs
@@ -74,32 +90,17 @@ void matrix_init_custom(void) {
     gpio_set_pin_input_low(A7);
     gpio_set_pin_input_low(B0);
 
-    mcp23018_errors = mcp23018_init_local(true);
+    i2c_init();
 
-    if (!mcp23018_errors) {
-        is_launching = true;
+    if (expander_dev == BUSDEV_NONE) {
+        expander_dev = busdev_register(&expander_desc);
     }
 }
 
 bool matrix_scan_custom(matrix_row_t current_matrix[]) {
-    bool changed = false;
-    // Attempt to reset the mcp23018 if it's not initialized
-    if (mcp23018_errors) {
-        if (++mcp23018_reset_loop > 0x1FFF) {
-            if (io_expander_ready()) {
-                // If we managed to initialize the mcp23018 - we need to reinitialize the matrix / layer state. During an electric discharge the i2c peripherals might be in a weird state. Giving a delay and resetting the MCU allows to recover from this.
-                mcp23018_reset_loop = 0;
-                mcp23018_errors     = mcp23018_init_local(false);
-#ifdef RGB_MATRIX_ENABLE
-                rgb_matrix_init();
-                // Required to recover the solid color mode
-                if (rgb_matrix_get_mode() == 1 && rgb_matrix_is_enabled()) {
-                    rgb_matrix_set_color_all(255, 255, 255);
-                }
-#endif
-            }
-        }
-    }
+    bool    changed  = false;
+    bool    right_ok = busdev_is_up(expander_dev);
+    uint8_t mcp_addr = busdev_addr(expander_dev) >> 1;
 
     // Scanning left and right side of the keyboard for key presses.
     // Left side is scanned by reading the gpio pins directly, right side is scanned by reading the mcp23018 registers.
@@ -131,15 +132,16 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
         }
 
         // Selecting the row on the right side of the keyboard.
-        if (!mcp23018_errors) {
-            // select row
-            mcp23018_errors += !mcp23018_set_output(MCP23018_DEFAULT_ADDRESS, mcp23018_PORTA, 0b01111111 & ~(1 << (row)));
-            mcp23018_errors += !mcp23018_set_output(MCP23018_DEFAULT_ADDRESS, mcp23018_PORTB, ((uint8_t)!mcp23018_leds[1] << 6) | ((uint8_t)!mcp23018_leds[0] << 7));
+        if (right_ok) {
+            if (!mcp23018_set_output(mcp_addr, mcp23018_PORTA, 0b01111111 & ~(1 << (row))) || !mcp23018_set_output(mcp_addr, mcp23018_PORTB, ((uint8_t)!mcp23018_leds[1] << 6) | ((uint8_t)!mcp23018_leds[0] << 7))) {
+                busdev_report_error(expander_dev, I2C_STATUS_ERROR);
+                right_ok = false;
+            }
         }
         // Reading the left side of the keyboard.
         if (row < MCP_ROWS_PER_HAND) {
             // i2c comm incur enough wait time
-            if (mcp23018_errors) {
+            if (!right_ok) {
                 // need wait to settle pin state
                 matrix_io_delay();
             }
@@ -176,15 +178,20 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
         }
 
         // Reading the right side of the keyboard.
-        if (!mcp23018_errors) {
+        if (right_ok) {
             for (uint16_t i = 0; i < IO_EXPANDER_OP_DELAY; i++) {
                 __asm__("nop");
             }
-            uint8_t rx;
-            mcp23018_errors += !mcp23018_readPins(MCP23018_DEFAULT_ADDRESS, mcp23018_PORTB, &rx);
-            data = ~(rx & 0b00111111);
-            for (uint16_t i = 0; i < IO_EXPANDER_OP_DELAY; i++) {
-                __asm__("nop");
+            uint8_t rx = 0xFF;
+            if (!mcp23018_readPins(mcp_addr, mcp23018_PORTB, &rx)) {
+                busdev_report_error(expander_dev, I2C_STATUS_ERROR);
+                right_ok = false;
+                data     = 0;
+            } else {
+                data = ~(rx & 0b00111111);
+                for (uint16_t i = 0; i < IO_EXPANDER_OP_DELAY; i++) {
+                    __asm__("nop");
+                }
             }
         } else {
             data = 0;
@@ -202,6 +209,20 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
             current_matrix[11 - row] |= ((raw_matrix_right[6 - col] & (1 << row) ? 1 : 0) << col);
         }
     }
+
+    // An impossible column means the expander lost its direction/pull-up
+    // configuration while still ACKing: drop the right hand for this scan and
+    // ask the supervisor to rewrite the configuration.
+    for (uint8_t i = 0; i < MCP_ROWS_PER_HAND; i++) {
+        if (current_matrix[MCP_ROWS_PER_HAND + i] & (matrix_row_t)~right_populated_mask[i]) {
+            for (uint8_t j = 0; j < MCP_ROWS_PER_HAND; j++) {
+                current_matrix[MCP_ROWS_PER_HAND + j] = 0;
+            }
+            busdev_report_suspect(expander_dev, BUSDEV_REASON_IMPOSSIBLE_KEY);
+            break;
+        }
+    }
+
     return changed;
 }
 
@@ -227,6 +248,6 @@ void matrix_power_up(void) {
 }
 
 bool is_transport_connected(void) {
-    return (bool)(mcp23018_errors == 0);
+    return busdev_is_up(expander_dev);
 }
 #pragma GCC pop_options

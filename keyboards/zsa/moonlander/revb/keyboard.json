@@ -3,6 +3,7 @@
     "manufacturer": "ZSA Technology Labs",
     "url": "zsa.io/moonlander",
     "maintainer": "ZSA via Drashna",
+    "modules": ["zsa/busdev"],
     "usb": {
         "vid": "0x3297",
         "pid": "0x1972",
