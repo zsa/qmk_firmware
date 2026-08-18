@@ -21,6 +21,7 @@
 #include <stdbool.h>
 #include "progmem.h"
 #include "util.h"
+#include "i2c_master.h"
 
 #define IS31FL3731_REG_COMMAND 0xFD
 #define IS31FL3731_COMMAND_FRAME_1 0x00
@@ -99,14 +100,14 @@ void is31fl3731_update_led_control_registers(uint8_t index);
 // otherwise gate which drivers is31fl3731_flush() actually writes out.
 bool is31fl3731_should_flush(uint8_t index);
 
+// Weak, empty by default. Called when a register or block write to a driver
+// fails (after all retries, if persistence is enabled).
+void is31fl3731_write_failed(uint8_t index, i2c_status_t status);
+
 // Re-runs the boot init for one driver and rewrites its LED-control page from
 // the software cache, then marks its PWM buffer dirty so the next frame
 // repaints. Used to recover a driver that lost its state.
 void is31fl3731_resync(uint8_t index);
-
-// Reads the LED-control registers back and compares them with the software
-// cache. False on any I2C error or mismatch.
-bool is31fl3731_verify(uint8_t index);
 
 void is31fl3731_flush(void);
 

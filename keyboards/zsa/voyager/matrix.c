@@ -59,6 +59,20 @@ static bool expander_verify(uint8_t addr) {
     return buf[0] == 0x00 && buf[1] == 0x3F;
 }
 
+// Both right-half chips share one power rail, and only the expander has a
+// trustworthy readback, so its state changes stand in for "the right half
+// reset": SETTLING->CONFIGURING is the one transition that follows a probe ACK
+// out of ABSENT (a hot-plug), and UP->CONFIGURING means it lost its
+// configuration while still ACKing.
+static void expander_on_state(busdev_id_t id, busdev_state_t old_state, busdev_state_t new_state, uint8_t reason) {
+    if (new_state != BUSDEV_CONFIGURING) {
+        return;
+    }
+    if (old_state == BUSDEV_SETTLING || (old_state == BUSDEV_UP && (reason == BUSDEV_REASON_VERIFY_MISMATCH || reason == BUSDEV_REASON_IMPOSSIBLE_KEY))) {
+        voyager_right_led_resync();
+    }
+}
+
 static const busdev_desc_t expander_desc = {
     .name               = "mcp23018",
     .addr               = MCP23018_DEFAULT_ADDRESS << 1,
@@ -69,7 +83,7 @@ static const busdev_desc_t expander_desc = {
     .probe              = NULL,
     .init_step          = expander_init_step,
     .verify             = expander_verify,
-    .on_state           = NULL,
+    .on_state           = expander_on_state,
 };
 
 void matrix_init_custom(void) {

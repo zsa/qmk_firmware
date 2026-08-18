@@ -20,7 +20,6 @@
 #include "i2c_master.h"
 #include "gpio.h"
 #include "wait.h"
-#include <string.h>
 
 #define IS31FL3731_PWM_REGISTER_COUNT 144
 #define IS31FL3731_LED_CONTROL_REGISTER_COUNT 18
@@ -65,14 +64,21 @@ is31fl3731_driver_t driver_buffers[IS31FL3731_DRIVER_COUNT] = {{
     .led_control_buffer_dirty = false,
 }};
 
+__attribute__((weak)) void is31fl3731_write_failed(uint8_t index, i2c_status_t status) {}
+
 void is31fl3731_write_register(uint8_t index, uint8_t reg, uint8_t data) {
+    i2c_status_t status = I2C_STATUS_SUCCESS;
 #if IS31FL3731_I2C_PERSISTENCE > 0
     for (uint8_t i = 0; i < IS31FL3731_I2C_PERSISTENCE; i++) {
-        if (i2c_write_register(i2c_addresses[index] << 1, reg, &data, 1, IS31FL3731_I2C_TIMEOUT) == I2C_STATUS_SUCCESS) break;
+        status = i2c_write_register(i2c_addresses[index] << 1, reg, &data, 1, IS31FL3731_I2C_TIMEOUT);
+        if (status == I2C_STATUS_SUCCESS) break;
     }
 #else
-    i2c_write_register(i2c_addresses[index] << 1, reg, &data, 1, IS31FL3731_I2C_TIMEOUT);
+    status = i2c_write_register(i2c_addresses[index] << 1, reg, &data, 1, IS31FL3731_I2C_TIMEOUT);
 #endif
+    if (status != I2C_STATUS_SUCCESS) {
+        is31fl3731_write_failed(index, status);
+    }
 }
 
 void is31fl3731_select_page(uint8_t index, uint8_t page) {
@@ -85,13 +91,21 @@ void is31fl3731_write_pwm_buffer(uint8_t index) {
 
     // Iterate over the pwm_buffer contents at 16 byte intervals.
     for (uint8_t i = 0; i < IS31FL3731_PWM_REGISTER_COUNT; i += 16) {
+        i2c_status_t status = I2C_STATUS_SUCCESS;
 #if IS31FL3731_I2C_PERSISTENCE > 0
         for (uint8_t j = 0; j < IS31FL3731_I2C_PERSISTENCE; j++) {
-            if (i2c_write_register(i2c_addresses[index] << 1, IS31FL3731_FRAME_REG_PWM + i, driver_buffers[index].pwm_buffer + i, 16, IS31FL3731_I2C_TIMEOUT) == I2C_STATUS_SUCCESS) break;
+            status = i2c_write_register(i2c_addresses[index] << 1, IS31FL3731_FRAME_REG_PWM + i, driver_buffers[index].pwm_buffer + i, 16, IS31FL3731_I2C_TIMEOUT);
+            if (status == I2C_STATUS_SUCCESS) break;
         }
 #else
-        i2c_write_register(i2c_addresses[index] << 1, IS31FL3731_FRAME_REG_PWM + i, driver_buffers[index].pwm_buffer + i, 16, IS31FL3731_I2C_TIMEOUT);
+        status = i2c_write_register(i2c_addresses[index] << 1, IS31FL3731_FRAME_REG_PWM + i, driver_buffers[index].pwm_buffer + i, 16, IS31FL3731_I2C_TIMEOUT);
 #endif
+        // Abandon the rest of this flush: an unresponsive driver would
+        // otherwise cost one timeout per remaining block.
+        if (status != I2C_STATUS_SUCCESS) {
+            is31fl3731_write_failed(index, status);
+            return;
+        }
     }
 }
 
@@ -246,17 +260,6 @@ void is31fl3731_resync(uint8_t index) {
     is31fl3731_update_led_control_registers(index);
 
     driver_buffers[index].pwm_buffer_dirty = true;
-}
-
-bool is31fl3731_verify(uint8_t index) {
-    uint8_t buffer[IS31FL3731_LED_CONTROL_REGISTER_COUNT];
-
-    // Page 0 is the steady state after init, so no page switch is needed.
-    if (i2c_read_register(i2c_addresses[index] << 1, IS31FL3731_FRAME_REG_LED_CONTROL, buffer, sizeof(buffer), IS31FL3731_I2C_TIMEOUT) != I2C_STATUS_SUCCESS) {
-        return false;
-    }
-
-    return memcmp(buffer, driver_buffers[index].led_control_buffer, sizeof(buffer)) == 0;
 }
 
 __attribute__((weak)) bool is31fl3731_should_flush(uint8_t index) {

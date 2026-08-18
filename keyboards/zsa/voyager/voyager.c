@@ -25,26 +25,37 @@ static busdev_step_t led_right_init_step(uint8_t addr, uint8_t step, uint16_t *d
     return BUSDEV_STEP_DONE;
 }
 
-static bool led_right_verify(uint8_t addr) {
-    return is31fl3731_verify(VOYAGER_RIGHT_LED_DRIVER);
-}
-
+// No verify: the IS31FL3731 frame registers are only readable in software
+// shutdown. Presence comes from the probe, loss from failed writes, and a
+// reset from the expander (both chips share the right-half rail).
 static const busdev_desc_t led_right_desc = {
     .name               = "is31_right",
     .addr               = IS31FL3731_I2C_ADDRESS_2 << 1,
     .settle_ms          = 10,
-    .verify_interval_ms = 250,
+    .verify_interval_ms = 0,
     .probe_timeout_ms   = 5,
     .max_err_streak     = 1,
     .probe              = NULL,
     .init_step          = led_right_init_step,
-    .verify             = led_right_verify,
+    .verify             = NULL,
     .on_state           = NULL,
 };
 
 bool is31fl3731_should_flush(uint8_t index) {
     return index != VOYAGER_RIGHT_LED_DRIVER || busdev_is_up(led_dev);
 }
+
+void is31fl3731_write_failed(uint8_t index, i2c_status_t status) {
+    if (index == VOYAGER_RIGHT_LED_DRIVER) {
+        busdev_report_error(led_dev, status);
+    }
+}
+
+void voyager_right_led_resync(void) {
+    busdev_force_down(led_dev, BUSDEV_REASON_PEER);
+}
+#else
+void voyager_right_led_resync(void) {}
 #endif
 
 bool mcp23018_leds[2] = {0, 0};
