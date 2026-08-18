@@ -159,10 +159,14 @@ layer_state_t layer_state_set_kb(layer_state_t state) {
 #    endif
     if (is_launching || !keyboard_config.led_level) return state;
     uint8_t layer = get_highest_layer(state);
-    STATUS_LED_1(layer & (1 << 0));
 #    ifdef COMMUNITY_MODULE_WIRELESS_ENABLE
-    /* PB4 belongs to the pairing blink while it runs. */
-    if (!zsa_wireless_pair_led_active())
+    /* PB5 belongs to the firmware-update indication while it runs. */
+    if (!zsa_wireless_dfu_led_red_owned())
+#    endif
+        STATUS_LED_1(layer & (1 << 0));
+#    ifdef COMMUNITY_MODULE_WIRELESS_ENABLE
+    /* PB4 belongs to the update indication, then to the pairing blink. */
+    if (!zsa_wireless_dfu_led_green_owned() && !zsa_wireless_pair_led_active())
 #    endif
         STATUS_LED_2(layer & (1 << 1));
     STATUS_LED_3(layer & (1 << 2));
@@ -186,10 +190,42 @@ void zsa_wireless_pair_led(uint8_t state) {
     if (is_launching || !keyboard_config.led_level) {
         return;
     }
-    if (state == ZSA_PAIR_LED_RELEASE) {
+    if (state == ZSA_STATUS_LED_RELEASE) {
         STATUS_LED_2(get_highest_layer(layer_state) & (1 << 1));
     } else {
-        STATUS_LED_2(state == ZSA_PAIR_LED_ON);
+        STATUS_LED_2(state == ZSA_STATUS_LED_ON);
+    }
+}
+
+/* Drives both left-half status LEDs (green G_LED on PB4 = STATUS_LED_2, red
+ * R_LED on PB5 = STATUS_LED_1) from the wireless module's firmware-update
+ * indication. It outranks both the pairing blink and the layer indicators, so
+ * RELEASE hands each pin back: green to the pairing blink when that owns it —
+ * it repaints on its next tick — otherwise to layer bit 1, red to layer
+ * bit 0. */
+void zsa_wireless_dfu_led(uint8_t green, uint8_t red) {
+#    ifdef COMMUNITY_MODULE_ORYX_ENABLE
+    if (rawhid_state.status_led_control) {
+        return;
+    }
+#    endif
+    if (is_launching || !keyboard_config.led_level) {
+        return;
+    }
+    uint8_t layer = get_highest_layer(layer_state);
+
+    if (green == ZSA_STATUS_LED_RELEASE) {
+        if (!zsa_wireless_pair_led_active()) {
+            STATUS_LED_2(layer & (1 << 1));
+        }
+    } else {
+        STATUS_LED_2(green == ZSA_STATUS_LED_ON);
+    }
+
+    if (red == ZSA_STATUS_LED_RELEASE) {
+        STATUS_LED_1(layer & (1 << 0));
+    } else {
+        STATUS_LED_1(red == ZSA_STATUS_LED_ON);
     }
 }
 #endif
