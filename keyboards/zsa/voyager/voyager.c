@@ -21,23 +21,41 @@ keyboard_config_t keyboard_config;
 static busdev_id_t led_dev = BUSDEV_NONE;
 
 static busdev_step_t led_right_init_step(uint8_t addr, uint8_t step, uint16_t *delay_ms) {
-    is31fl3731_resync(VOYAGER_RIGHT_LED_DRIVER);
-    return BUSDEV_STEP_DONE;
+    return is31fl3731_resync(VOYAGER_RIGHT_LED_DRIVER) ? BUSDEV_STEP_DONE : BUSDEV_STEP_FAIL;
 }
 
-// No verify: the IS31FL3731 frame registers are only readable in software
-// shutdown. Presence comes from the probe, loss from failed writes, and a
-// reset from the expander (both chips share the right-half rail).
+// The frame registers read back unreliably over the right-half cable, but the
+// function registers are readable in operating mode, one byte at a time. Read
+// the shutdown register: 0x01 means running, a reset chip reads 0x00. A single
+// bad readback is not proof of a reset, so it takes two in a row.
+static bool led_right_verify(uint8_t addr) {
+    static uint8_t strikes = 0;
+    uint8_t        value   = 0;
+
+    is31fl3731_select_page(VOYAGER_RIGHT_LED_DRIVER, IS31FL3731_COMMAND_FUNCTION);
+    i2c_status_t status = i2c_read_register(addr, IS31FL3731_FUNCTION_REG_SHUTDOWN, &value, 1, IS31FL3731_I2C_TIMEOUT);
+    is31fl3731_select_page(VOYAGER_RIGHT_LED_DRIVER, IS31FL3731_COMMAND_FRAME_1);
+
+    if (status == I2C_STATUS_SUCCESS && value == 0x01) {
+        strikes = 0;
+        return true;
+    }
+    if (strikes < UINT8_MAX) {
+        strikes++;
+    }
+    return strikes < 2;
+}
+
 static const busdev_desc_t led_right_desc = {
     .name               = "is31_right",
     .addr               = IS31FL3731_I2C_ADDRESS_2 << 1,
     .settle_ms          = 10,
-    .verify_interval_ms = 0,
+    .verify_interval_ms = 500,
     .probe_timeout_ms   = 5,
     .max_err_streak     = 1,
     .probe              = NULL,
     .init_step          = led_right_init_step,
-    .verify             = NULL,
+    .verify             = led_right_verify,
     .on_state           = NULL,
 };
 
