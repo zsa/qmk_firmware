@@ -2,6 +2,7 @@
     "manufacturer": "ZSA Technology Labs",
     "keyboard_name": "Voyager 2",
     "maintainer": "ZSA Technology Labs",
+    "modules": ["zsa/busdev"],
     "url": "zsa.io/voyager",
     "processor": "STM32F303",
     "bootloader": "custom",

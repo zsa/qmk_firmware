@@ -38,6 +38,19 @@ extern keyboard_config_t keyboard_config;
 
 bool is_transport_connected(void);
 
+/* True while the STM32 masters the right half's segment of the TRRS bus, false
+ * while the right half has it and the left nRF's mirrors stand in. Decided in
+ * matrix.c by probing the real expander. */
+bool zsa_stm32_owns_right_bus(void);
+
+/* Drop the right LED driver so the supervisor re-probes and reconfigures it:
+ * resync after the right half reset, ownership_changed after the bus changed
+ * hands. up() is what gates writes to it. No-ops (and false) on builds without
+ * the right LED driver. */
+void voyager_right_led_resync(void);
+void voyager_right_led_ownership_changed(void);
+bool voyager_right_led_up(void);
+
 /* Command the right-half nRF (TWIS slave, 7-bit 0x54) to apply a VBUS input
  * current limit and a charge current, both in mA. The right clamps them to its
  * own devicetree. Idempotent; the nPM1300 reverts the input limit to its

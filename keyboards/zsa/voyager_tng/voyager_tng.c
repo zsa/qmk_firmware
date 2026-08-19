@@ -4,6 +4,7 @@
 #include QMK_KEYBOARD_H
 
 #include "i2c_master.h"
+#include "busdev.h"
 
 #ifdef COMMUNITY_MODULE_ORYX_ENABLE
 #    include "oryx.h"
@@ -20,13 +21,99 @@ keyboard_config_t keyboard_config;
 bool mcp23018_leds[2] = {0, 0};
 bool is_launching     = false;
 
+#if defined(RGB_MATRIX_ENABLE) && defined(IS31FL3731_I2C_ADDRESS_2)
+#    define VOYAGER_RIGHT_LED_DRIVER 1
+#    define VOYAGER_RIGHT_LED_REAL_ADDRESS (IS31FL3731_I2C_ADDRESS_2 << 1)
+
+static busdev_id_t led_dev = BUSDEV_NONE;
+
+/* Driver 1 is the real right-half chip while we own its bus, the left nRF's
+ * mirror otherwise. It must follow the same signal the matrix does, or we would
+ * scan one device and light the other. */
+static uint8_t led_right_select_addr(void) {
+    return (zsa_stm32_owns_right_bus() ? IS31FL3731_I2C_ADDRESS_2 : ZSA_RIGHT_LED_MIRROR_ADDRESS) << 1;
+}
+
+static busdev_step_t led_right_init_step(uint8_t addr, uint8_t step, uint16_t *delay_ms) {
+    is31fl3731_set_i2c_address(VOYAGER_RIGHT_LED_DRIVER, addr >> 1);
+    return is31fl3731_resync(VOYAGER_RIGHT_LED_DRIVER) ? BUSDEV_STEP_DONE : BUSDEV_STEP_FAIL;
+}
+
+/* The frame registers read back unreliably over the right-half cable, but the
+ * function registers are readable in operating mode, one byte at a time. Read
+ * the shutdown register: 0x01 means running, a reset chip reads 0x00. A single
+ * bad readback is not proof of a reset, so it takes two in a row. The mirror is
+ * not an IS31 at all and has no function page to read. */
+static bool led_right_verify(uint8_t addr) {
+    static uint8_t strikes = 0;
+    uint8_t        value   = 0;
+
+    if (addr != VOYAGER_RIGHT_LED_REAL_ADDRESS) {
+        strikes = 0;
+        return true;
+    }
+
+    is31fl3731_select_page(VOYAGER_RIGHT_LED_DRIVER, IS31FL3731_COMMAND_FUNCTION);
+    i2c_status_t status = i2c_read_register(addr, IS31FL3731_FUNCTION_REG_SHUTDOWN, &value, 1, IS31FL3731_I2C_TIMEOUT);
+    is31fl3731_select_page(VOYAGER_RIGHT_LED_DRIVER, IS31FL3731_COMMAND_FRAME_1);
+
+    if (status == I2C_STATUS_SUCCESS && value == 0x01) {
+        strikes = 0;
+        return true;
+    }
+    if (strikes < UINT8_MAX) {
+        strikes++;
+    }
+    return strikes < 2;
+}
+
+static const busdev_desc_t led_right_desc = {
+    .name               = "is31_right",
+    .addr               = VOYAGER_RIGHT_LED_REAL_ADDRESS,
+    .addr_alt           = 0,
+    .settle_ms          = 10,
+    .verify_interval_ms = 500,
+    .probe_timeout_ms   = 5,
+    .max_err_streak     = 1,
+    .select_addr        = led_right_select_addr,
+    .probe              = NULL,
+    .init_step          = led_right_init_step,
+    .verify             = led_right_verify,
+    .on_state           = NULL,
+};
+
+void is31fl3731_write_failed(uint8_t index, i2c_status_t status) {
+    if (index == VOYAGER_RIGHT_LED_DRIVER) {
+        busdev_report_error(led_dev, status);
+    }
+}
+
+void voyager_right_led_resync(void) {
+    busdev_force_down(led_dev, BUSDEV_REASON_PEER);
+}
+
+void voyager_right_led_ownership_changed(void) {
+    busdev_force_down(led_dev, BUSDEV_REASON_OWNERSHIP);
+}
+
+bool voyager_right_led_up(void) {
+    return busdev_is_up(led_dev);
+}
+#else
+void voyager_right_led_resync(void) {}
+void voyager_right_led_ownership_changed(void) {}
+bool voyager_right_led_up(void) {
+    return false;
+}
+#endif
+
 /* Right-half nRF TWIS command endpoint (also its I2C DFU address). */
 #define RIGHT_NRF_I2C_ADDRESS (0x54 << 1)
 #define RIGHT_NRF_CMD_REG 0x04
 #define RIGHT_NRF_CMD_SET_CHARGE_LIMITS 0x02
 
-/* Deliberately does not touch mcp23018_errors: a NACK from the nRF must not
- * mark the whole TRRS transport dead. */
+/* Deliberately unsupervised: a NACK from the nRF must not mark the whole TRRS
+ * transport dead. */
 bool voyager_right_nrf_set_charge_limits(uint16_t vbus_limit_ma, uint16_t charge_ma) {
     /* cmd, then the two currents as LE16 — the same payload CMD_CHARGE_LIMITS
      * carries to the left half, so one policy reaches both the same way. */
@@ -40,9 +127,9 @@ bool voyager_right_nrf_set_charge_limits(uint16_t vbus_limit_ma, uint16_t charge
 
 #ifdef COMMUNITY_MODULE_WIRELESS_ENABLE
 /* Read the right half's telemetry struct. A plain read, no register pointer:
- * the slave serves it from offset 0 (see zsa_right_telemetry.h). Same
- * no-mcp23018_errors treatment as above — the caller decides what an absent
- * right half means. */
+ * the slave serves it from offset 0 (see zsa_right_telemetry.h). Unsupervised
+ * like the command above — the caller decides what an absent right half
+ * means. */
 bool voyager_right_nrf_read_telemetry(struct zsa_right_telemetry *out) {
     return i2c_receive(RIGHT_NRF_I2C_ADDRESS, (uint8_t *)out, sizeof(*out), VOYAGER_I2C_TIMEOUT) == I2C_STATUS_SUCCESS;
 }
@@ -402,6 +489,9 @@ bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
 void keyboard_post_init_kb(void) {
 #ifdef RGB_MATRIX_ENABLE
     rgb_matrix_enable_noeeprom();
+#endif
+#ifdef VOYAGER_RIGHT_LED_DRIVER
+    led_dev = busdev_register(&led_right_desc);
 #endif
 
     keyboard_config.raw = eeconfig_read_kb();
