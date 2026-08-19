@@ -6,6 +6,7 @@
 #include "mcp23018.h"
 #include "i2c_master.h"
 #include "busdev.h"
+#include <string.h>
 
 #pragma GCC push_options
 #pragma GCC optimize("-O3")
@@ -28,11 +29,22 @@ static busdev_id_t expander_dev = BUSDEV_NONE;
 // outside this mask cannot come from a key press.
 static const matrix_row_t right_populated_mask[MCP_ROWS_PER_HAND] = {0x3F, 0x3F, 0x3F, 0x3E, 0x04, 0x60};
 
+// Complete configuration file, registers 0x00..0x0D (BANK0), written and
+// verified as one block: corrupted bus traffic can reach any register (an
+// address one bit off the expander's writes here), and a stray IPOL or
+// GPINTEN bit fakes key state with IODIR/GPPU still intact.
+static const uint8_t expander_config[14] = {
+    0x00, 0x3F, // IODIRA outputs, IODIRB rows in / LEDs out
+    0x00, 0x00, // IPOLA/B no inversion
+    0x00, 0x00, // GPINTENA/B interrupts off
+    0x00, 0x00, // DEFVALA/B
+    0x00, 0x00, // INTCONA/B
+    0x00, 0x00, // IOCON (twice, both banks' view)
+    0x00, 0x3F, // GPPUA none, GPPUB pull-ups on the rows
+};
+
 static busdev_step_t expander_init_step(uint8_t addr, uint8_t step, uint16_t *delay_ms) {
-    if (!mcp23018_set_config(addr >> 1, mcp23018_PORTA, 0b00000000)) {
-        return BUSDEV_STEP_FAIL;
-    }
-    if (!mcp23018_set_config(addr >> 1, mcp23018_PORTB, 0b00111111)) {
+    if (i2c_write_register(addr, 0x00, expander_config, sizeof(expander_config), VOYAGER_I2C_TIMEOUT) != I2C_STATUS_SUCCESS) {
         return BUSDEV_STEP_FAIL;
     }
     return BUSDEV_STEP_DONE;
@@ -41,18 +53,12 @@ static busdev_step_t expander_init_step(uint8_t addr, uint8_t step, uint16_t *de
 // Reads IODIRA/IODIRB and GPPUA/GPPUB back and compares them with what
 // expander_init_step() wrote.
 static bool expander_verify(uint8_t addr) {
-    uint8_t buf[2];
+    uint8_t buf[sizeof(expander_config)];
 
     if (i2c_read_register(addr, 0x00, buf, sizeof(buf), VOYAGER_I2C_TIMEOUT) != I2C_STATUS_SUCCESS) {
         return false;
     }
-    if (buf[0] != 0x00 || buf[1] != 0x3F) {
-        return false;
-    }
-    if (i2c_read_register(addr, 0x0C, buf, sizeof(buf), VOYAGER_I2C_TIMEOUT) != I2C_STATUS_SUCCESS) {
-        return false;
-    }
-    return buf[0] == 0x00 && buf[1] == 0x3F;
+    return memcmp(buf, expander_config, sizeof(buf)) == 0;
 }
 
 // Both right-half chips share one power rail, and only the expander has a
