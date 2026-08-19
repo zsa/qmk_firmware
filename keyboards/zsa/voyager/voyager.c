@@ -4,6 +4,8 @@
 
 #include QMK_KEYBOARD_H
 
+#include "busdev.h"
+
 #ifdef COMMUNITY_MODULE_ORYX_ENABLE
 #    include "oryx.h"
 #endif // COMMUNITY_MODULE_ORYX_ENABLE
@@ -12,6 +14,67 @@
 #endif
 
 keyboard_config_t keyboard_config;
+
+#if defined(RGB_MATRIX_ENABLE) && defined(IS31FL3731_I2C_ADDRESS_2)
+#    define VOYAGER_RIGHT_LED_DRIVER 1
+
+static busdev_id_t led_dev = BUSDEV_NONE;
+
+static busdev_step_t led_right_init_step(uint8_t addr, uint8_t step, uint16_t *delay_ms) {
+    return is31fl3731_resync(VOYAGER_RIGHT_LED_DRIVER) ? BUSDEV_STEP_DONE : BUSDEV_STEP_FAIL;
+}
+
+// The frame registers read back unreliably over the right-half cable, but the
+// function registers are readable in operating mode, one byte at a time. Read
+// the shutdown register: 0x01 means running, a reset chip reads 0x00. A single
+// bad readback is not proof of a reset, so it takes two in a row.
+static bool led_right_verify(uint8_t addr) {
+    static uint8_t strikes = 0;
+    uint8_t        value   = 0;
+
+    is31fl3731_select_page(VOYAGER_RIGHT_LED_DRIVER, IS31FL3731_COMMAND_FUNCTION);
+    i2c_status_t status = i2c_read_register(addr, IS31FL3731_FUNCTION_REG_SHUTDOWN, &value, 1, IS31FL3731_I2C_TIMEOUT);
+    is31fl3731_select_page(VOYAGER_RIGHT_LED_DRIVER, IS31FL3731_COMMAND_FRAME_1);
+
+    if (status == I2C_STATUS_SUCCESS && value == 0x01) {
+        strikes = 0;
+        return true;
+    }
+    if (strikes < UINT8_MAX) {
+        strikes++;
+    }
+    return strikes < 2;
+}
+
+static const busdev_desc_t led_right_desc = {
+    .name               = "is31_right",
+    .addr               = IS31FL3731_I2C_ADDRESS_2 << 1,
+    .settle_ms          = 10,
+    .verify_interval_ms = 500,
+    .probe_timeout_ms   = 5,
+    .max_err_streak     = 1,
+    .probe              = NULL,
+    .init_step          = led_right_init_step,
+    .verify             = led_right_verify,
+    .on_state           = NULL,
+};
+
+bool is31fl3731_should_flush(uint8_t index) {
+    return index != VOYAGER_RIGHT_LED_DRIVER || busdev_is_up(led_dev);
+}
+
+void is31fl3731_write_failed(uint8_t index, i2c_status_t status) {
+    if (index == VOYAGER_RIGHT_LED_DRIVER) {
+        busdev_report_error(led_dev, status);
+    }
+}
+
+void voyager_right_led_resync(void) {
+    busdev_force_down(led_dev, BUSDEV_REASON_PEER);
+}
+#else
+void voyager_right_led_resync(void) {}
+#endif
 
 bool mcp23018_leds[2] = {0, 0};
 bool is_launching     = false;
@@ -281,6 +344,9 @@ bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
 void keyboard_post_init_kb(void) {
 #ifdef RGB_MATRIX_ENABLE
     rgb_matrix_enable_noeeprom();
+#endif
+#ifdef VOYAGER_RIGHT_LED_DRIVER
+    led_dev = busdev_register(&led_right_desc);
 #endif
 
     keyboard_config.raw = eeconfig_read_kb();

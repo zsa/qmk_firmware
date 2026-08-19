@@ -29,3 +29,7 @@ typedef union {
 extern keyboard_config_t keyboard_config;
 
 bool is_transport_connected(void);
+
+// Drops the right LED driver so the supervisor re-probes and reconfigures it.
+// No-op on builds without the right LED driver.
+void voyager_right_led_resync(void);

@@ -21,6 +21,7 @@
 #include <stdbool.h>
 #include "progmem.h"
 #include "util.h"
+#include "i2c_master.h"
 
 #define IS31FL3731_REG_COMMAND 0xFD
 #define IS31FL3731_COMMAND_FRAME_1 0x00
@@ -79,13 +80,14 @@ typedef struct is31fl3731_led_t {
 extern const is31fl3731_led_t PROGMEM g_is31fl3731_leds[IS31FL3731_LED_COUNT];
 
 void is31fl3731_init_drivers(void);
-void is31fl3731_init(uint8_t index);
+// False if a write failed; the driver is left partially configured.
+bool is31fl3731_init(uint8_t index);
 /* Retarget a driver index at runtime. Needed where the chip behind an index is
  * a real device on one transport and an emulated mirror at a different address
  * on another. */
-void is31fl3731_set_i2c_address(uint8_t index, uint8_t address);
-void is31fl3731_write_register(uint8_t index, uint8_t reg, uint8_t data);
-void is31fl3731_select_page(uint8_t index, uint8_t page);
+void         is31fl3731_set_i2c_address(uint8_t index, uint8_t address);
+i2c_status_t is31fl3731_write_register(uint8_t index, uint8_t reg, uint8_t data);
+i2c_status_t is31fl3731_select_page(uint8_t index, uint8_t page);
 
 void is31fl3731_set_color(int index, uint8_t red, uint8_t green, uint8_t blue);
 void is31fl3731_set_color_all(uint8_t red, uint8_t green, uint8_t blue);
@@ -102,6 +104,16 @@ void is31fl3731_update_led_control_registers(uint8_t index);
 // Weak; returns true unconditionally by default. Override to rate-limit or
 // otherwise gate which drivers is31fl3731_flush() actually writes out.
 bool is31fl3731_should_flush(uint8_t index);
+
+// Weak, empty by default. Called when a register or block write to a driver
+// fails (after all retries, if persistence is enabled).
+void is31fl3731_write_failed(uint8_t index, i2c_status_t status);
+
+// Re-runs the boot init for one driver and rewrites its LED-control page from
+// the software cache, then marks its PWM buffer dirty so the next frame
+// repaints. Used to recover a driver that lost its state. False if the init
+// failed, in which case the LED-control page is not rewritten.
+bool is31fl3731_resync(uint8_t index);
 
 void is31fl3731_flush(void);
 
