@@ -40,24 +40,36 @@ static busdev_step_t led_right_init_step(uint8_t addr, uint8_t step, uint16_t *d
 }
 
 /* The frame registers read back unreliably over the right-half cable, but the
- * function registers are readable in operating mode, one byte at a time. Read
- * the shutdown register: 0x01 means running, a reset chip reads 0x00. A single
- * bad readback is not proof of a reset, so it takes two in a row. The mirror is
- * not an IS31 at all and has no function page to read. */
+ * function registers are readable in operating mode, one byte at a time. A
+ * single bad readback is not proof of anything, so it takes two in a row. The
+ * mirror is not an IS31 at all and has no function page to read. */
 static bool led_right_verify(uint8_t addr) {
     static uint8_t strikes = 0;
-    uint8_t        value   = 0;
 
     if (addr != VOYAGER_RIGHT_LED_REAL_ADDRESS) {
         strikes = 0;
         return true;
     }
 
+    // Function-page configuration written by init, read back one register at a
+    // time (single-byte function-page reads are the only documented-readable
+    // access in operating mode). A corrupted display-option or auto-play
+    // register makes the hardware animate on its own.
+    static const uint8_t regs[5]     = {IS31FL3731_FUNCTION_REG_CONFIG, IS31FL3731_FUNCTION_REG_AUTO_PLAY_1, IS31FL3731_FUNCTION_REG_DISPLAY_OPTION, IS31FL3731_FUNCTION_REG_AUDIO_SYNC, IS31FL3731_FUNCTION_REG_SHUTDOWN};
+    static const uint8_t expected[5] = {0x00, 0x00, 0x00, 0x00, 0x01};
+
+    bool ok = true;
     is31fl3731_select_page(VOYAGER_RIGHT_LED_DRIVER, IS31FL3731_COMMAND_FUNCTION);
-    i2c_status_t status = i2c_read_register(addr, IS31FL3731_FUNCTION_REG_SHUTDOWN, &value, 1, IS31FL3731_I2C_TIMEOUT);
+    for (uint8_t i = 0; i < sizeof(regs); i++) {
+        uint8_t value = 0xFF;
+        if (i2c_read_register(addr, regs[i], &value, 1, IS31FL3731_I2C_TIMEOUT) != I2C_STATUS_SUCCESS || value != expected[i]) {
+            ok = false;
+            break;
+        }
+    }
     is31fl3731_select_page(VOYAGER_RIGHT_LED_DRIVER, IS31FL3731_COMMAND_FRAME_1);
 
-    if (status == I2C_STATUS_SUCCESS && value == 0x01) {
+    if (ok) {
         strikes = 0;
         return true;
     }

@@ -160,6 +160,10 @@ bool is31fl3731_init(uint8_t index) {
     if (is31fl3731_write_register(index, IS31FL3731_FUNCTION_REG_CONFIG, IS31FL3731_CONFIG_MODE_PICTURE) != I2C_STATUS_SUCCESS) return false;
     // display frame 0
     if (is31fl3731_write_register(index, IS31FL3731_FUNCTION_REG_PICTURE_DISPLAY, 0x00) != I2C_STATUS_SUCCESS) return false;
+    // auto play off, blink off
+    if (is31fl3731_write_register(index, IS31FL3731_FUNCTION_REG_AUTO_PLAY_1, 0x00) != I2C_STATUS_SUCCESS) return false;
+    if (is31fl3731_write_register(index, IS31FL3731_FUNCTION_REG_AUTO_PLAY_2, 0x00) != I2C_STATUS_SUCCESS) return false;
+    if (is31fl3731_write_register(index, IS31FL3731_FUNCTION_REG_DISPLAY_OPTION, 0x00) != I2C_STATUS_SUCCESS) return false;
     // audio sync off
     if (is31fl3731_write_register(index, IS31FL3731_FUNCTION_REG_AUDIO_SYNC, 0x00) != I2C_STATUS_SUCCESS) return false;
 
