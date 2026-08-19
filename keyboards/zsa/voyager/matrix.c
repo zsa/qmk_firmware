@@ -18,10 +18,6 @@ static matrix_row_t raw_matrix_right[MATRIX_COLS];
 #ifndef VOYAGER_I2C_TIMEOUT
 #    define VOYAGER_I2C_TIMEOUT 5
 #endif
-// Delay between each i2c io expander ops (in MCU cycles)
-#ifndef IO_EXPANDER_OP_DELAY
-#    define IO_EXPANDER_OP_DELAY 500
-#endif
 
 extern bool mcp23018_leds[2];
 extern bool is_launching;
@@ -193,9 +189,6 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
 
         // Reading the right side of the keyboard.
         if (right_ok) {
-            for (uint16_t i = 0; i < IO_EXPANDER_OP_DELAY; i++) {
-                __asm__("nop");
-            }
             uint8_t rx = 0xFF;
             if (!mcp23018_readPins(mcp_addr, mcp23018_PORTB, &rx)) {
                 busdev_report_error(expander_dev, I2C_STATUS_ERROR);
@@ -203,9 +196,6 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
                 data     = 0;
             } else {
                 data = ~(rx & 0b00111111);
-                for (uint16_t i = 0; i < IO_EXPANDER_OP_DELAY; i++) {
-                    __asm__("nop");
-                }
             }
         } else {
             data = 0;
