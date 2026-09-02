@@ -181,45 +181,6 @@ bool dynamic_macro_record_end_kb(int8_t direction) {
     return true;
 }
 #    endif
-
-static uint32_t startup_exec(uint32_t trigger_time, void *cb_arg) {
-    static uint8_t startup_loop = 0;
-
-    switch (startup_loop++) {
-        case 0:
-            STATUS_LED_1(true);
-            STATUS_LED_2(false);
-            STATUS_LED_3(false);
-            STATUS_LED_4(false);
-            break;
-        case 1:
-            STATUS_LED_2(true);
-            break;
-        case 2:
-            STATUS_LED_3(true);
-            break;
-        case 3:
-            STATUS_LED_4(true);
-            break;
-        case 4:
-            STATUS_LED_1(false);
-            break;
-        case 5:
-            STATUS_LED_2(false);
-            break;
-        case 6:
-            STATUS_LED_3(false);
-            break;
-        case 7:
-            STATUS_LED_4(false);
-            break;
-        case 8:
-            is_launching = false;
-            layer_state_set_kb(layer_state);
-            return 0;
-    }
-    return 250;
-}
 #endif
 
 void keyboard_pre_init_kb(void) {
@@ -500,7 +461,9 @@ bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
 
 void keyboard_post_init_kb(void) {
 #ifdef RGB_MATRIX_ENABLE
+#    ifndef COMMUNITY_MODULE_WIRELESS_ENABLE
     rgb_matrix_enable_noeeprom();
+#    endif
 #endif
 #ifdef VOYAGER_RIGHT_LED_DRIVER
     led_dev = busdev_register(&led_right_desc);
@@ -513,11 +476,15 @@ void keyboard_post_init_kb(void) {
         keyboard_config.led_level_res = 0b11;
         eeconfig_update_kb(keyboard_config.raw);
     }
-#if defined(DEFERRED_EXEC_ENABLE)
-    is_launching = true;
-    defer_exec(500, startup_exec, NULL);
-#endif
     keyboard_post_init_user();
+#ifdef RGB_MATRIX_ENABLE
+#    ifdef COMMUNITY_MODULE_WIRELESS_ENABLE
+    /* Last, because the keymap's post-init may enable the matrix. It stays dark
+     * until the wireless module's boot power gate has the nRF's verdict: after
+     * a brownout, lighting it flattens the cell again. */
+    rgb_matrix_disable_noeeprom();
+#    endif
+#endif
 }
 
 void eeconfig_init_kb(void) { // EEPROM is getting reset!
