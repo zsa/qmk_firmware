@@ -69,8 +69,17 @@ static bool     stm32_owns_right_bus = true;
 static uint8_t  bus_probe_timeouts;
 static uint32_t last_bus_probe_ms;
 
+/* Whether the last conclusive probe saw the real right expander, i.e. whether
+ * the TRRS cable is plugged. Separate from ownership, which latches to "ours"
+ * on a timeout streak. */
+static bool     real_expander_present;
+
 bool zsa_stm32_owns_right_bus(void) {
     return stm32_owns_right_bus;
+}
+
+bool zsa_trrs_plugged(void) {
+    return real_expander_present;
 }
 
 static void ownership_set(bool owns) {
@@ -114,6 +123,10 @@ static void ownership_from_probe(i2c_status_t status) {
         return;
     }
     bus_probe_timeouts = 0;
+    /* Only a conclusive probe moves cable presence: SUCCESS is the real chip
+     * answering, a clean NAK is nothing on the wire. Timeouts are contention,
+     * handled above, and leave it unchanged. */
+    real_expander_present = (status == I2C_STATUS_SUCCESS);
     ownership_set(status == I2C_STATUS_SUCCESS);
 }
 

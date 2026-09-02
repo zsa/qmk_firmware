@@ -43,6 +43,10 @@ bool is_transport_connected(void);
  * matrix.c by probing the real expander. */
 bool zsa_stm32_owns_right_bus(void);
 
+/* True while the real right-half expander answers at 0x20, i.e. while the TRRS
+ * cable between the halves is plugged. Only a conclusive probe moves it. */
+bool zsa_trrs_plugged(void);
+
 /* Drop the right LED driver so the supervisor re-probes and reconfigures it:
  * resync after the right half reset, ownership_changed after the bus changed
  * hands. up() is what gates writes to it. No-ops (and false) on builds without
