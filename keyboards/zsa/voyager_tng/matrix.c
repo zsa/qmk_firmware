@@ -59,6 +59,11 @@ static const matrix_row_t right_populated_mask[MCP_ROWS_PER_HAND] = {0x3F, 0x3F,
 #ifndef VOYAGER_BUS_TIMEOUT_STREAK
 #    define VOYAGER_BUS_TIMEOUT_STREAK 2
 #endif
+// Consecutive clean NAKs before the cable is declared unplugged. A single NAK
+// can come from the right half being busy or mid-reset while still cabled.
+#ifndef VOYAGER_TRRS_NAK_STREAK
+#    define VOYAGER_TRRS_NAK_STREAK 2
+#endif
 
 /* Bus ownership. The TRRS segments do not isolate, so the right half's real
  * expander is reachable whenever the cable is plugged - USB or not. Whoever can
@@ -69,10 +74,11 @@ static bool     stm32_owns_right_bus = true;
 static uint8_t  bus_probe_timeouts;
 static uint32_t last_bus_probe_ms;
 
-/* Whether the last conclusive probe saw the real right expander, i.e. whether
- * the TRRS cable is plugged. Separate from ownership, which latches to "ours"
- * on a timeout streak. */
+/* Whether the real right expander was seen, i.e. whether the TRRS cable is
+ * plugged. Set by one ACK, cleared after two consecutive clean NAKs. Separate
+ * from ownership, which latches to "ours" on a timeout streak. */
 static bool     real_expander_present;
+static uint8_t  trrs_nak_streak;
 
 bool zsa_stm32_owns_right_bus(void) {
     return stm32_owns_right_bus;
@@ -125,8 +131,19 @@ static void ownership_from_probe(i2c_status_t status) {
     bus_probe_timeouts = 0;
     /* Only a conclusive probe moves cable presence: SUCCESS is the real chip
      * answering, a clean NAK is nothing on the wire. Timeouts are contention,
-     * handled above, and leave it unchanged. */
-    real_expander_present = (status == I2C_STATUS_SUCCESS);
+     * handled above, and leave it unchanged. Presence is set by one ACK and
+     * cleared after two consecutive clean NAKs. */
+    if (status == I2C_STATUS_SUCCESS) {
+        trrs_nak_streak       = 0;
+        real_expander_present = true;
+    } else {
+        if (trrs_nak_streak < VOYAGER_TRRS_NAK_STREAK) {
+            trrs_nak_streak++;
+        }
+        if (trrs_nak_streak >= VOYAGER_TRRS_NAK_STREAK) {
+            real_expander_present = false;
+        }
+    }
     ownership_set(status == I2C_STATUS_SUCCESS);
 }
 

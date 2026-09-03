@@ -44,7 +44,8 @@ bool is_transport_connected(void);
 bool zsa_stm32_owns_right_bus(void);
 
 /* True while the real right-half expander answers at 0x20, i.e. while the TRRS
- * cable between the halves is plugged. Only a conclusive probe moves it. */
+ * cable between the halves is plugged. Only a conclusive probe moves it: set by
+ * one ACK, cleared after two consecutive clean NAKs. */
 bool zsa_trrs_plugged(void);
 
 /* Drop the right LED driver so the supervisor re-probes and reconfigures it:
