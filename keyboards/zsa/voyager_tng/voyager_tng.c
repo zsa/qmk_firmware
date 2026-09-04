@@ -24,8 +24,33 @@ bool is_launching     = false;
 #if defined(RGB_MATRIX_ENABLE) && defined(IS31FL3731_I2C_ADDRESS_2)
 #    define VOYAGER_RIGHT_LED_DRIVER 1
 #    define VOYAGER_RIGHT_LED_REAL_ADDRESS (IS31FL3731_I2C_ADDRESS_2 << 1)
+#    define VOYAGER_LEFT_LED_DRIVER 0
+#    define VOYAGER_LEFT_LED_ADDRESS (IS31FL3731_I2C_ADDRESS_1 << 1)
 
-static busdev_id_t led_dev = BUSDEV_NONE;
+static busdev_id_t led_dev      = BUSDEV_NONE;
+static busdev_id_t led_left_dev = BUSDEV_NONE;
+
+/* Function-page configuration written by init, read back one register at a
+ * time (single-byte function-page reads are the only documented-readable
+ * access in operating mode). A corrupted display-option or auto-play register
+ * makes the hardware animate on its own; a chip that powered up after boot
+ * reads back software shutdown while still ACKing every PWM write. */
+static bool led_function_page_ok(uint8_t driver, uint8_t addr) {
+    static const uint8_t regs[5]     = {IS31FL3731_FUNCTION_REG_CONFIG, IS31FL3731_FUNCTION_REG_AUTO_PLAY_1, IS31FL3731_FUNCTION_REG_DISPLAY_OPTION, IS31FL3731_FUNCTION_REG_AUDIO_SYNC, IS31FL3731_FUNCTION_REG_SHUTDOWN};
+    static const uint8_t expected[5] = {0x00, 0x00, 0x00, 0x00, 0x01};
+
+    bool ok = true;
+    is31fl3731_select_page(driver, IS31FL3731_COMMAND_FUNCTION);
+    for (uint8_t i = 0; i < sizeof(regs); i++) {
+        uint8_t value = 0xFF;
+        if (i2c_read_register(addr, regs[i], &value, 1, IS31FL3731_I2C_TIMEOUT) != I2C_STATUS_SUCCESS || value != expected[i]) {
+            ok = false;
+            break;
+        }
+    }
+    is31fl3731_select_page(driver, IS31FL3731_COMMAND_FRAME_1);
+    return ok;
+}
 
 /* Driver 1 is the real right-half chip while we own its bus, the left nRF's
  * mirror otherwise. It must follow the same signal the matrix does, or we would
@@ -46,30 +71,7 @@ static busdev_step_t led_right_init_step(uint8_t addr, uint8_t step, uint16_t *d
 static bool led_right_verify(uint8_t addr) {
     static uint8_t strikes = 0;
 
-    if (addr != VOYAGER_RIGHT_LED_REAL_ADDRESS) {
-        strikes = 0;
-        return true;
-    }
-
-    // Function-page configuration written by init, read back one register at a
-    // time (single-byte function-page reads are the only documented-readable
-    // access in operating mode). A corrupted display-option or auto-play
-    // register makes the hardware animate on its own.
-    static const uint8_t regs[5]     = {IS31FL3731_FUNCTION_REG_CONFIG, IS31FL3731_FUNCTION_REG_AUTO_PLAY_1, IS31FL3731_FUNCTION_REG_DISPLAY_OPTION, IS31FL3731_FUNCTION_REG_AUDIO_SYNC, IS31FL3731_FUNCTION_REG_SHUTDOWN};
-    static const uint8_t expected[5] = {0x00, 0x00, 0x00, 0x00, 0x01};
-
-    bool ok = true;
-    is31fl3731_select_page(VOYAGER_RIGHT_LED_DRIVER, IS31FL3731_COMMAND_FUNCTION);
-    for (uint8_t i = 0; i < sizeof(regs); i++) {
-        uint8_t value = 0xFF;
-        if (i2c_read_register(addr, regs[i], &value, 1, IS31FL3731_I2C_TIMEOUT) != I2C_STATUS_SUCCESS || value != expected[i]) {
-            ok = false;
-            break;
-        }
-    }
-    is31fl3731_select_page(VOYAGER_RIGHT_LED_DRIVER, IS31FL3731_COMMAND_FRAME_1);
-
-    if (ok) {
+    if (addr != VOYAGER_RIGHT_LED_REAL_ADDRESS || led_function_page_ok(VOYAGER_RIGHT_LED_DRIVER, addr)) {
         strikes = 0;
         return true;
     }
@@ -78,6 +80,41 @@ static bool led_right_verify(uint8_t addr) {
     }
     return strikes < 2;
 }
+
+/* Left chip: one fixed address on the STM32's own bus, so no address
+ * selection. Its rail comes from the left nRF's PMIC and can come up after
+ * boot, when the chip sits in software shutdown and ACKs every PWM write. */
+static busdev_step_t led_left_init_step(uint8_t addr, uint8_t step, uint16_t *delay_ms) {
+    return is31fl3731_resync(VOYAGER_LEFT_LED_DRIVER) ? BUSDEV_STEP_DONE : BUSDEV_STEP_FAIL;
+}
+
+static bool led_left_verify(uint8_t addr) {
+    static uint8_t strikes = 0;
+
+    if (led_function_page_ok(VOYAGER_LEFT_LED_DRIVER, addr)) {
+        strikes = 0;
+        return true;
+    }
+    if (strikes < UINT8_MAX) {
+        strikes++;
+    }
+    return strikes < 2;
+}
+
+static const busdev_desc_t led_left_desc = {
+    .name               = "is31_left",
+    .addr               = VOYAGER_LEFT_LED_ADDRESS,
+    .addr_alt           = 0,
+    .settle_ms          = 10,
+    .verify_interval_ms = 500,
+    .probe_timeout_ms   = 5,
+    .max_err_streak     = 1,
+    .select_addr        = NULL,
+    .probe              = NULL,
+    .init_step          = led_left_init_step,
+    .verify             = led_left_verify,
+    .on_state           = NULL,
+};
 
 static const busdev_desc_t led_right_desc = {
     .name               = "is31_right",
@@ -97,6 +134,8 @@ static const busdev_desc_t led_right_desc = {
 void is31fl3731_write_failed(uint8_t index, i2c_status_t status) {
     if (index == VOYAGER_RIGHT_LED_DRIVER) {
         busdev_report_error(led_dev, status);
+    } else if (index == VOYAGER_LEFT_LED_DRIVER) {
+        busdev_report_error(led_left_dev, status);
     }
 }
 
@@ -466,7 +505,8 @@ void keyboard_post_init_kb(void) {
 #    endif
 #endif
 #ifdef VOYAGER_RIGHT_LED_DRIVER
-    led_dev = busdev_register(&led_right_desc);
+    led_dev      = busdev_register(&led_right_desc);
+    led_left_dev = busdev_register(&led_left_desc);
 #endif
 
     keyboard_config.raw = eeconfig_read_kb();
