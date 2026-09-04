@@ -176,6 +176,18 @@ static const uint8_t expander_config[14] = {
 };
 
 static busdev_step_t expander_init_step(uint8_t addr, uint8_t step, uint16_t *delay_ms) {
+    // Clear IOCON with single-register writes at both of its addresses (0x05 in
+    // the BANK=1 map, 0x0A in BANK=0) before the block write: a sequential write
+    // from 0x00 never reaches IOCON while the chip is in byte mode. 0x05 is
+    // GPINTENB in BANK=0, which the block sets to 0 anyway.
+    static const uint8_t iocon_clear = 0x00;
+
+    if (i2c_write_register(addr, 0x05, &iocon_clear, 1, VOYAGER_I2C_TIMEOUT) != I2C_STATUS_SUCCESS) {
+        return BUSDEV_STEP_FAIL;
+    }
+    if (i2c_write_register(addr, 0x0A, &iocon_clear, 1, VOYAGER_I2C_TIMEOUT) != I2C_STATUS_SUCCESS) {
+        return BUSDEV_STEP_FAIL;
+    }
     if (i2c_write_register(addr, 0x00, expander_config, sizeof(expander_config), VOYAGER_I2C_TIMEOUT) != I2C_STATUS_SUCCESS) {
         return BUSDEV_STEP_FAIL;
     }
@@ -196,7 +208,25 @@ static bool expander_verify(uint8_t addr) {
     if (i2c_read_register(addr, 0x00, buf, sizeof(buf), VOYAGER_I2C_TIMEOUT) != I2C_STATUS_SUCCESS) {
         return false;
     }
-    return memcmp(buf, expander_config, sizeof(buf)) == 0;
+    if (memcmp(buf, expander_config, sizeof(buf)) == 0) {
+        return true;
+    }
+#ifdef ZSA_RTT_DEBUG // TEMP DEBUG
+    // Byte mode (IOCON.SEQOP=1): the address pointer toggles between the A/B
+    // pair, so the readback is buf[0]/buf[1] repeated.
+    bool byte_mode = true;
+    for (uint8_t i = 2; i < sizeof(buf); i++) {
+        if (buf[i] != buf[i & 1]) {
+            byte_mode = false;
+            break;
+        }
+    }
+    if (byte_mode) {
+        extern void zsa_rtt_event3(const char *name, int a, int b, int c);
+        zsa_rtt_event3("expander readback in byte mode", buf[0], buf[1], 0);
+    }
+#endif
+    return false;
 }
 
 // Both real right-half chips share one power rail, and only the expander has a
