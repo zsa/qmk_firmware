@@ -166,8 +166,9 @@ bool voyager_right_led_up(void) {
 /* Deliberately unsupervised: a NACK from the nRF must not mark the whole TRRS
  * transport dead. */
 bool voyager_right_nrf_set_charge_limits(uint16_t vbus_limit_ma, uint16_t charge_ma) {
-    /* cmd, then the two currents as LE16 — the same payload CMD_CHARGE_LIMITS
-     * carries to the left half, so one policy reaches both the same way. */
+    /* cmd, then the two currents as LE16 — the same payload layout
+     * CMD_CHARGE_LIMITS carries to the left half. The values differ: the caller
+     * sends the right half its own, lower pair. */
     uint8_t payload[5] = {
         RIGHT_NRF_CMD_SET_CHARGE_LIMITS,
         (uint8_t)(vbus_limit_ma & 0xFF), (uint8_t)(vbus_limit_ma >> 8),
