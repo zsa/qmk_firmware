@@ -80,8 +80,16 @@ static uint32_t last_bus_probe_ms;
 static bool     real_expander_present;
 static uint8_t  trrs_nak_streak;
 
+// Failed right-half expander scan transactions, cumulative, wraps at 65535.
+// Scan path only: ownership probes are not counted.
+static uint16_t right_read_errors;
+
 bool zsa_stm32_owns_right_bus(void) {
     return stm32_owns_right_bus;
+}
+
+uint16_t zsa_matrix_right_read_errors(void) {
+    return right_read_errors;
 }
 
 bool zsa_trrs_plugged(void) {
@@ -349,6 +357,7 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
         // Bulk path selects rows implicitly (all 7 rows come back from one read), so no per-row select here.
         if (!use_bulk_path && right_ok) {
             if (!mcp23018_set_output(mcp_addr, mcp23018_PORTA, 0b01111111 & ~(1 << (row))) || !mcp23018_set_output(mcp_addr, mcp23018_PORTB, ((uint8_t)!mcp23018_leds[1] << 6) | ((uint8_t)!mcp23018_leds[0] << 7))) {
+                right_read_errors++;
                 busdev_report_error(expander_dev, I2C_STATUS_ERROR);
                 right_ok = false;
             }
@@ -400,6 +409,7 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
             if (right_ok) {
                 uint8_t rx = 0xFF;
                 if (!mcp23018_readPins(mcp_addr, mcp23018_PORTB, &rx)) {
+                    right_read_errors++;
                     busdev_report_error(expander_dev, I2C_STATUS_ERROR);
                     right_ok = false;
                     data     = 0;
@@ -437,6 +447,7 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
                 status = i2c_receive(addr, rx, sizeof(rx), VOYAGER_I2C_TIMEOUT);
             }
             if (status != I2C_STATUS_SUCCESS) {
+                right_read_errors++;
                 busdev_report_error(expander_dev, status);
             }
 
