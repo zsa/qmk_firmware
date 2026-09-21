@@ -92,25 +92,45 @@ i2c_status_t is31fl3731_select_page(uint8_t index, uint8_t page) {
     return is31fl3731_write_register(index, IS31FL3731_REG_COMMAND, page);
 }
 
-void is31fl3731_write_pwm_buffer(uint8_t index) {
+bool is31fl3731_write_pwm_block(uint8_t index, uint8_t block) {
     // Assumes page 0 is already selected.
-    // Transmit PWM registers in 9 transfers of 16 bytes.
+    if (index >= IS31FL3731_DRIVER_COUNT || block >= IS31FL3731_PWM_BLOCK_COUNT) {
+        return false;
+    }
 
-    // Iterate over the pwm_buffer contents at 16 byte intervals.
-    for (uint8_t i = 0; i < IS31FL3731_PWM_REGISTER_COUNT; i += 16) {
-        i2c_status_t status = I2C_STATUS_SUCCESS;
+    uint8_t      offset = block * IS31FL3731_PWM_BLOCK_SIZE;
+    i2c_status_t status = I2C_STATUS_SUCCESS;
 #if IS31FL3731_I2C_PERSISTENCE > 0
-        for (uint8_t j = 0; j < IS31FL3731_I2C_PERSISTENCE; j++) {
-            status = i2c_write_register(i2c_addresses[index] << 1, IS31FL3731_FRAME_REG_PWM + i, driver_buffers[index].pwm_buffer + i, 16, IS31FL3731_I2C_TIMEOUT);
-            if (status == I2C_STATUS_SUCCESS) break;
-        }
+    for (uint8_t j = 0; j < IS31FL3731_I2C_PERSISTENCE; j++) {
+        status = i2c_write_register(i2c_addresses[index] << 1, IS31FL3731_FRAME_REG_PWM + offset, driver_buffers[index].pwm_buffer + offset, IS31FL3731_PWM_BLOCK_SIZE, IS31FL3731_I2C_TIMEOUT);
+        if (status == I2C_STATUS_SUCCESS) break;
+    }
 #else
-        status = i2c_write_register(i2c_addresses[index] << 1, IS31FL3731_FRAME_REG_PWM + i, driver_buffers[index].pwm_buffer + i, 16, IS31FL3731_I2C_TIMEOUT);
+    status = i2c_write_register(i2c_addresses[index] << 1, IS31FL3731_FRAME_REG_PWM + offset, driver_buffers[index].pwm_buffer + offset, IS31FL3731_PWM_BLOCK_SIZE, IS31FL3731_I2C_TIMEOUT);
 #endif
+    if (status != I2C_STATUS_SUCCESS) {
+        is31fl3731_write_failed(index, status);
+        return false;
+    }
+    return true;
+}
+
+bool is31fl3731_pwm_buffer_dirty(uint8_t index) {
+    return index < IS31FL3731_DRIVER_COUNT && driver_buffers[index].pwm_buffer_dirty;
+}
+
+void is31fl3731_set_pwm_buffer_dirty(uint8_t index, bool dirty) {
+    if (index < IS31FL3731_DRIVER_COUNT) {
+        driver_buffers[index].pwm_buffer_dirty = dirty;
+    }
+}
+
+void is31fl3731_write_pwm_buffer(uint8_t index) {
+    // Transmit PWM registers in 9 transfers of 16 bytes.
+    for (uint8_t block = 0; block < IS31FL3731_PWM_BLOCK_COUNT; block++) {
         // Abandon the rest of this flush: an unresponsive driver would
         // otherwise cost one timeout per remaining block.
-        if (status != I2C_STATUS_SUCCESS) {
-            is31fl3731_write_failed(index, status);
+        if (!is31fl3731_write_pwm_block(index, block)) {
             return;
         }
     }

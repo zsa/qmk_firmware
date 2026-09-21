@@ -38,6 +38,10 @@
 #define IS31FL3731_FRAME_REG_BLINK_CONTROL 0x12
 #define IS31FL3731_FRAME_REG_PWM 0x24
 
+// The 144 PWM registers are written as 9 blocks of 16 bytes.
+#define IS31FL3731_PWM_BLOCK_SIZE 16
+#define IS31FL3731_PWM_BLOCK_COUNT 9
+
 #define IS31FL3731_FUNCTION_REG_CONFIG 0x00
 #define IS31FL3731_CONFIG_MODE_PICTURE 0x00
 #define IS31FL3731_CONFIG_MODE_AUTO_PLAY 0x08
@@ -103,6 +107,17 @@ void is31fl3731_set_led_control_register(uint8_t index, bool red, bool green, bo
 // If the buffer is dirty, it will update the driver with the buffer.
 void is31fl3731_update_pwm_buffers(uint8_t index);
 void is31fl3731_update_led_control_registers(uint8_t index);
+
+/* Writes one 16-byte PWM block (0..IS31FL3731_PWM_BLOCK_COUNT-1) of one
+ * driver. Assumes page 0 is selected, like is31fl3731_write_pwm_buffer().
+ * False on a bad index or a failed write. Lets a caller spread a frame over
+ * several passes where one blocking whole-frame write costs too much. */
+bool is31fl3731_write_pwm_block(uint8_t index, uint8_t block);
+
+/* Read and write one driver's PWM dirty flag, for callers that drive the
+ * blocks themselves. */
+bool is31fl3731_pwm_buffer_dirty(uint8_t index);
+void is31fl3731_set_pwm_buffer_dirty(uint8_t index, bool dirty);
 
 // Weak; returns true unconditionally by default. Override to rate-limit or
 // otherwise gate which drivers is31fl3731_flush() actually writes out.
