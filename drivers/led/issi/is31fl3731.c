@@ -16,12 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <string.h>
 #include "is31fl3731.h"
 #include "i2c_master.h"
 #include "gpio.h"
 #include "wait.h"
 
-#define IS31FL3731_PWM_REGISTER_COUNT 144
 #define IS31FL3731_LED_CONTROL_REGISTER_COUNT 18
 
 #ifndef IS31FL3731_I2C_TIMEOUT
@@ -92,7 +92,7 @@ i2c_status_t is31fl3731_select_page(uint8_t index, uint8_t page) {
     return is31fl3731_write_register(index, IS31FL3731_REG_COMMAND, page);
 }
 
-bool is31fl3731_write_pwm_block(uint8_t index, uint8_t block) {
+bool is31fl3731_write_pwm_block_from(uint8_t index, uint8_t block, const uint8_t *frame) {
     // Assumes page 0 is already selected.
     if (index >= IS31FL3731_DRIVER_COUNT || block >= IS31FL3731_PWM_BLOCK_COUNT) {
         return false;
@@ -102,17 +102,34 @@ bool is31fl3731_write_pwm_block(uint8_t index, uint8_t block) {
     i2c_status_t status = I2C_STATUS_SUCCESS;
 #if IS31FL3731_I2C_PERSISTENCE > 0
     for (uint8_t j = 0; j < IS31FL3731_I2C_PERSISTENCE; j++) {
-        status = i2c_write_register(i2c_addresses[index] << 1, IS31FL3731_FRAME_REG_PWM + offset, driver_buffers[index].pwm_buffer + offset, IS31FL3731_PWM_BLOCK_SIZE, IS31FL3731_I2C_TIMEOUT);
+        status = i2c_write_register(i2c_addresses[index] << 1, IS31FL3731_FRAME_REG_PWM + offset, frame + offset, IS31FL3731_PWM_BLOCK_SIZE, IS31FL3731_I2C_TIMEOUT);
         if (status == I2C_STATUS_SUCCESS) break;
     }
 #else
-    status = i2c_write_register(i2c_addresses[index] << 1, IS31FL3731_FRAME_REG_PWM + offset, driver_buffers[index].pwm_buffer + offset, IS31FL3731_PWM_BLOCK_SIZE, IS31FL3731_I2C_TIMEOUT);
+    status = i2c_write_register(i2c_addresses[index] << 1, IS31FL3731_FRAME_REG_PWM + offset, frame + offset, IS31FL3731_PWM_BLOCK_SIZE, IS31FL3731_I2C_TIMEOUT);
 #endif
     if (status != I2C_STATUS_SUCCESS) {
         is31fl3731_write_failed(index, status);
         return false;
     }
     return true;
+}
+
+bool is31fl3731_write_pwm_block(uint8_t index, uint8_t block) {
+    if (index >= IS31FL3731_DRIVER_COUNT) {
+        return false;
+    }
+    return is31fl3731_write_pwm_block_from(index, block, driver_buffers[index].pwm_buffer);
+}
+
+void is31fl3731_copy_pwm_buffer(uint8_t index, uint8_t out[IS31FL3731_PWM_REGISTER_COUNT]) {
+    if (index < IS31FL3731_DRIVER_COUNT) {
+        memcpy(out, driver_buffers[index].pwm_buffer, IS31FL3731_PWM_REGISTER_COUNT);
+    }
+}
+
+bool is31fl3731_pwm_buffer_matches(uint8_t index, const uint8_t frame[IS31FL3731_PWM_REGISTER_COUNT]) {
+    return index < IS31FL3731_DRIVER_COUNT && memcmp(frame, driver_buffers[index].pwm_buffer, IS31FL3731_PWM_REGISTER_COUNT) == 0;
 }
 
 bool is31fl3731_pwm_buffer_dirty(uint8_t index) {

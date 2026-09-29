@@ -38,6 +38,8 @@
 #define IS31FL3731_FRAME_REG_BLINK_CONTROL 0x12
 #define IS31FL3731_FRAME_REG_PWM 0x24
 
+#define IS31FL3731_PWM_REGISTER_COUNT 144
+
 // The 144 PWM registers are written as 9 blocks of 16 bytes.
 #define IS31FL3731_PWM_BLOCK_SIZE 16
 #define IS31FL3731_PWM_BLOCK_COUNT 9
@@ -113,6 +115,17 @@ void is31fl3731_update_led_control_registers(uint8_t index);
  * False on a bad index or a failed write. Lets a caller spread a frame over
  * several passes where one blocking whole-frame write costs too much. */
 bool is31fl3731_write_pwm_block(uint8_t index, uint8_t block);
+
+/* Same as is31fl3731_write_pwm_block(), with the data taken from frame (a
+ * whole IS31FL3731_PWM_REGISTER_COUNT-byte PWM buffer) instead of the live
+ * buffer. */
+bool is31fl3731_write_pwm_block_from(uint8_t index, uint8_t block, const uint8_t *frame);
+
+/* Copies one driver's live PWM buffer into out. */
+void is31fl3731_copy_pwm_buffer(uint8_t index, uint8_t out[IS31FL3731_PWM_REGISTER_COUNT]);
+
+/* True when one driver's live PWM buffer equals frame. */
+bool is31fl3731_pwm_buffer_matches(uint8_t index, const uint8_t frame[IS31FL3731_PWM_REGISTER_COUNT]);
 
 /* Read and write one driver's PWM dirty flag, for callers that drive the
  * blocks themselves. */
