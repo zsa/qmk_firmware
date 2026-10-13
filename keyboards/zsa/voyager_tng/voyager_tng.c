@@ -330,6 +330,36 @@ void zsa_wireless_dfu_led(uint8_t green, uint8_t red) {
 }
 #endif
 
+#if defined(COMMUNITY_MODULE_WIRELESS_ENABLE) && !defined(VOYAGER_USER_LEDS)
+/* Status LEDs off in Sleep, the layer state repainted on leaving it. The
+ * update indication and the pairing blink keep their pins. */
+void zsa_wireless_sleep_changed(bool sleeping) {
+#    ifdef COMMUNITY_MODULE_ORYX_ENABLE
+    if (rawhid_state.status_led_control) {
+        return;
+    }
+#    endif
+    if (is_launching || !keyboard_config.led_level) {
+        return;
+    }
+    if (!sleeping) {
+        layer_state_set_kb(layer_state);
+#    ifdef CAPS_LOCK_STATUS
+        STATUS_LED_4(host_keyboard_led_state().caps_lock);
+#    endif
+        return;
+    }
+    if (!zsa_wireless_dfu_led_red_owned()) {
+        STATUS_LED_1(false);
+    }
+    if (!zsa_wireless_dfu_led_green_owned() && !zsa_wireless_pair_led_active()) {
+        STATUS_LED_2(false);
+    }
+    STATUS_LED_3(false);
+    STATUS_LED_4(false);
+}
+#endif
+
 #ifdef COMMUNITY_MODULE_WIRELESS_ENABLE
 // Drives the USB D+ pullup from the nRF's reported VBUS state.
 void zsa_wireless_vbus_changed(bool present) {
