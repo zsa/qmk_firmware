@@ -31,3 +31,12 @@
 #define UART_RX_PIN A10
 #undef ZSA_WIRELESS_BAUD_RATE
 #define ZSA_WIRELESS_BAUD_RATE 1000000
+
+// I2C1 TIMINGR for a 48 MHz kernel clock (RM0316 TIMINGR formula, tPRESC
+// 20.8 ns): tSCLL 1.8125 us, tSCLH 541.7 ns, tSCLDEL 125 ns, tSDADEL 0, the
+// QMK 72 MHz default's 1.8056 us, 541.7 ns, 111.1 ns, 0 rounded up.
+#define I2C1_TIMINGR_PRESC 0U
+#define I2C1_TIMINGR_SCLDEL 5U
+#define I2C1_TIMINGR_SDADEL 0U
+#define I2C1_TIMINGR_SCLH 25U
+#define I2C1_TIMINGR_SCLL 86U
