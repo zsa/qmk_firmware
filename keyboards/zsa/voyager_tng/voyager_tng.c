@@ -14,6 +14,7 @@
 #endif
 #ifdef COMMUNITY_MODULE_WIRELESS_ENABLE
 #    include "wireless.h"
+#    include "status_layer.h"
 #endif
 
 keyboard_config_t keyboard_config;
@@ -265,8 +266,8 @@ layer_state_t layer_state_set_kb(layer_state_t state) {
 #    endif
         STATUS_LED_1(layer & (1 << 0));
 #    ifdef COMMUNITY_MODULE_WIRELESS_ENABLE
-    /* PB4 belongs to the update indication, then to the pairing blink. */
-    if (!zsa_wireless_dfu_led_green_owned() && !zsa_wireless_pair_led_active())
+    /* PB4 belongs to the update indication while it runs. */
+    if (!zsa_wireless_dfu_led_green_owned())
 #    endif
         STATUS_LED_2(layer & (1 << 1));
     STATUS_LED_3(layer & (1 << 2));
@@ -278,31 +279,10 @@ layer_state_t layer_state_set_kb(layer_state_t state) {
 }
 
 #if defined(COMMUNITY_MODULE_WIRELESS_ENABLE) && !defined(VOYAGER_USER_LEDS)
-/* Drives the left-half green status LED (G_LED on PB4 = STATUS_LED_2) from the
- * wireless module's pairing blink. It shares the pin with the layer-1
- * indicator, so RELEASE hands the pin back to the current layer state. */
-void zsa_wireless_pair_led(uint8_t state) {
-#    ifdef COMMUNITY_MODULE_ORYX_ENABLE
-    if (rawhid_state.status_led_control) {
-        return;
-    }
-#    endif
-    if (is_launching || !keyboard_config.led_level) {
-        return;
-    }
-    if (state == ZSA_STATUS_LED_RELEASE) {
-        STATUS_LED_2(get_highest_layer(layer_state) & (1 << 1));
-    } else {
-        STATUS_LED_2(state == ZSA_STATUS_LED_ON);
-    }
-}
-
 /* Drives both left-half status LEDs (green G_LED on PB4 = STATUS_LED_2, red
  * R_LED on PB5 = STATUS_LED_1) from the wireless module's firmware-update
- * indication. It outranks both the pairing blink and the layer indicators, so
- * RELEASE hands each pin back: green to the pairing blink when that owns it —
- * it repaints on its next tick — otherwise to layer bit 1, red to layer
- * bit 0. */
+ * indication. It outranks the layer indicators, so RELEASE hands each pin
+ * back: green to layer bit 1, red to layer bit 0. */
 void zsa_wireless_dfu_led(uint8_t green, uint8_t red) {
 #    ifdef COMMUNITY_MODULE_ORYX_ENABLE
     if (rawhid_state.status_led_control) {
@@ -315,9 +295,7 @@ void zsa_wireless_dfu_led(uint8_t green, uint8_t red) {
     uint8_t layer = get_highest_layer(layer_state);
 
     if (green == ZSA_STATUS_LED_RELEASE) {
-        if (!zsa_wireless_pair_led_active()) {
-            STATUS_LED_2(layer & (1 << 1));
-        }
+        STATUS_LED_2(layer & (1 << 1));
     } else {
         STATUS_LED_2(green == ZSA_STATUS_LED_ON);
     }
@@ -332,7 +310,7 @@ void zsa_wireless_dfu_led(uint8_t green, uint8_t red) {
 
 #if defined(COMMUNITY_MODULE_WIRELESS_ENABLE) && !defined(VOYAGER_USER_LEDS)
 /* Status LEDs off in Sleep, the layer state repainted on leaving it. The
- * update indication and the pairing blink keep their pins. */
+ * update indication keeps its pins. */
 void zsa_wireless_sleep_changed(bool sleeping) {
 #    ifdef COMMUNITY_MODULE_ORYX_ENABLE
     if (rawhid_state.status_led_control) {
@@ -352,11 +330,20 @@ void zsa_wireless_sleep_changed(bool sleeping) {
     if (!zsa_wireless_dfu_led_red_owned()) {
         STATUS_LED_1(false);
     }
-    if (!zsa_wireless_dfu_led_green_owned() && !zsa_wireless_pair_led_active()) {
+    if (!zsa_wireless_dfu_led_green_owned()) {
         STATUS_LED_2(false);
     }
     STATUS_LED_3(false);
     STATUS_LED_4(false);
+}
+#endif
+
+#if defined(COMMUNITY_MODULE_WIRELESS_ENABLE) && defined(RGB_MATRIX_ENABLE)
+/* The Bluetooth bank menu paints over the keymap's indicators. */
+bool rgb_matrix_indicators_advanced_kb(uint8_t led_min, uint8_t led_max) {
+    bool ret = rgb_matrix_indicators_advanced_user(led_min, led_max);
+    zsa_wireless_ble_menu_render(led_min, led_max);
+    return ret;
 }
 #endif
 
