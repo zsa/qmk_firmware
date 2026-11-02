@@ -163,6 +163,7 @@ bool voyager_right_led_up(void) {
 #define RIGHT_NRF_I2C_ADDRESS (0x54 << 1)
 #define RIGHT_NRF_CMD_REG 0x04
 #define RIGHT_NRF_CMD_SET_CHARGE_LIMITS 0x02
+#define RIGHT_NRF_CMD_SHIP_MODE 0x03
 
 /* Deliberately unsupervised: a NACK from the nRF must not mark the whole TRRS
  * transport dead. */
@@ -176,6 +177,12 @@ bool voyager_right_nrf_set_charge_limits(uint16_t vbus_limit_ma, uint16_t charge
         (uint8_t)(charge_ma & 0xFF),     (uint8_t)(charge_ma >> 8),
     };
     return i2c_write_register(RIGHT_NRF_I2C_ADDRESS, RIGHT_NRF_CMD_REG, payload, sizeof(payload), VOYAGER_I2C_TIMEOUT) == I2C_STATUS_SUCCESS;
+}
+
+/* Unsupervised like the command above. True once the nRF ACKed the write. */
+bool voyager_right_nrf_ship(void) {
+    uint8_t cmd = RIGHT_NRF_CMD_SHIP_MODE;
+    return i2c_write_register(RIGHT_NRF_I2C_ADDRESS, RIGHT_NRF_CMD_REG, &cmd, sizeof(cmd), VOYAGER_I2C_TIMEOUT) == I2C_STATUS_SUCCESS;
 }
 
 #ifdef COMMUNITY_MODULE_WIRELESS_ENABLE

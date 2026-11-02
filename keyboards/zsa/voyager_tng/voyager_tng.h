@@ -62,6 +62,10 @@ bool voyager_right_led_up(void);
  * startup value by itself on VBUS removal. */
 bool voyager_right_nrf_set_charge_limits(uint16_t vbus_limit_ma, uint16_t charge_ma);
 
+/* Command the right-half nRF to enter nPM1300 ship mode. True when the write
+ * was ACKed; the nRF still refuses with VBUS present. */
+bool voyager_right_nrf_ship(void);
+
 #ifdef COMMUNITY_MODULE_WIRELESS_ENABLE
 #    include "zsa_right_telemetry.h"
 /* Read what the right half says about itself from the same TWIS slave. Only
