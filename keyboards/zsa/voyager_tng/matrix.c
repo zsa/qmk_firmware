@@ -80,16 +80,24 @@ static uint32_t last_bus_probe_ms;
 static bool     real_expander_present;
 static uint8_t  trrs_nak_streak;
 
+#ifdef ZSA_SCAN_DIAG
 // Failed right-half expander scan transactions, cumulative, wraps at 65535.
 // Scan path only: ownership probes are not counted.
 static uint16_t right_read_errors;
 
-bool zsa_stm32_owns_right_bus(void) {
-    return stm32_owns_right_bus;
-}
-
 uint16_t zsa_matrix_right_read_errors(void) {
     return right_read_errors;
+}
+
+static inline void count_right_read_error(void) {
+    right_read_errors++;
+}
+#else
+static inline void count_right_read_error(void) {}
+#endif
+
+bool zsa_stm32_owns_right_bus(void) {
+    return stm32_owns_right_bus;
 }
 
 bool zsa_trrs_plugged(void) {
@@ -107,10 +115,6 @@ static void ownership_set(bool owns) {
     busdev_force_down(expander_dev, BUSDEV_REASON_OWNERSHIP);
     voyager_right_led_ownership_changed();
     busdev_hold(VOYAGER_BUS_REINIT_DELAY_MS);
-#ifdef ZSA_RTT_DEBUG // TEMP DEBUG
-    extern void zsa_rtt_event3(const char *name, int a, int b, int c);
-    zsa_rtt_event3(owns ? "bus: -> STM32 owns (phy)" : "bus: -> right owns (mirror)", owns, 0, 0);
-#endif
 }
 
 // Turns one ping of the real expander address into an ownership decision. 0x20
@@ -219,21 +223,6 @@ static bool expander_verify(uint8_t addr) {
     if (memcmp(buf, expander_config, sizeof(buf)) == 0) {
         return true;
     }
-#ifdef ZSA_RTT_DEBUG // TEMP DEBUG
-    // Byte mode (IOCON.SEQOP=1): the address pointer toggles between the A/B
-    // pair, so the readback is buf[0]/buf[1] repeated.
-    bool byte_mode = true;
-    for (uint8_t i = 2; i < sizeof(buf); i++) {
-        if (buf[i] != buf[i & 1]) {
-            byte_mode = false;
-            break;
-        }
-    }
-    if (byte_mode) {
-        extern void zsa_rtt_event3(const char *name, int a, int b, int c);
-        zsa_rtt_event3("expander readback in byte mode", buf[0], buf[1], 0);
-    }
-#endif
     return false;
 }
 
@@ -357,7 +346,7 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
         // Bulk path selects rows implicitly (all 7 rows come back from one read), so no per-row select here.
         if (!use_bulk_path && right_ok) {
             if (!mcp23018_set_output(mcp_addr, mcp23018_PORTA, 0b01111111 & ~(1 << (row))) || !mcp23018_set_output(mcp_addr, mcp23018_PORTB, ((uint8_t)!mcp23018_leds[1] << 6) | ((uint8_t)!mcp23018_leds[0] << 7))) {
-                right_read_errors++;
+                count_right_read_error();
                 busdev_report_error(expander_dev, I2C_STATUS_ERROR);
                 right_ok = false;
             }
@@ -409,7 +398,7 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
             if (right_ok) {
                 uint8_t rx = 0xFF;
                 if (!mcp23018_readPins(mcp_addr, mcp23018_PORTB, &rx)) {
-                    right_read_errors++;
+                    count_right_read_error();
                     busdev_report_error(expander_dev, I2C_STATUS_ERROR);
                     right_ok = false;
                     data     = 0;
@@ -447,7 +436,7 @@ bool matrix_scan_custom(matrix_row_t current_matrix[]) {
                 status = i2c_receive(addr, rx, sizeof(rx), VOYAGER_I2C_TIMEOUT);
             }
             if (status != I2C_STATUS_SUCCESS) {
-                right_read_errors++;
+                count_right_read_error();
                 busdev_report_error(expander_dev, status);
             }
 
