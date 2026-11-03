@@ -346,6 +346,15 @@ void zsa_wireless_sleep_changed(bool sleeping) {
 #endif
 
 #if defined(COMMUNITY_MODULE_WIRELESS_ENABLE) && defined(RGB_MATRIX_ENABLE)
+/* The keymap's indicators are skipped while the menu or diagnostic view owns
+ * the LEDs. */
+bool rgb_matrix_indicators_kb(void) {
+    if (zsa_wireless_ble_menu_open() || zsa_wireless_diag_view_open()) {
+        return false;
+    }
+    return rgb_matrix_indicators_user();
+}
+
 /* The Bluetooth bank menu paints over the keymap's indicators. */
 bool rgb_matrix_indicators_advanced_kb(uint8_t led_min, uint8_t led_max) {
     bool ret = rgb_matrix_indicators_advanced_user(led_min, led_max);
