@@ -1,6 +1,6 @@
 {
     "manufacturer": "ZSA Technology Labs",
-    "keyboard_name": "Voyager 2",
+    "keyboard_name": "Wireless Voyager",
     "maintainer": "ZSA Technology Labs",
     "modules": ["zsa/busdev"],
     "url": "zsa.io/voyager",
