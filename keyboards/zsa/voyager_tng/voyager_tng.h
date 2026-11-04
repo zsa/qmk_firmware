@@ -72,4 +72,9 @@ bool voyager_right_nrf_ship(void);
  * meaningful while the TRRS cable is plugged and the STM32 masters that bus;
  * the wireless module gates on zsa_stm32_owns_right_bus() before calling. */
 bool voyager_right_nrf_read_telemetry(struct zsa_right_telemetry *out);
+
+/* Write to / read from one register of the right nRF's confirm mailbox (same
+ * slave). Same gating as the telemetry read. */
+bool voyager_right_nrf_mailbox_write(uint8_t reg, const uint8_t *data, uint16_t len);
+bool voyager_right_nrf_mailbox_read(uint8_t reg, uint8_t *out, uint16_t len);
 #endif

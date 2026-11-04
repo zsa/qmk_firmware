@@ -193,6 +193,36 @@ bool voyager_right_nrf_ship(void) {
 bool voyager_right_nrf_read_telemetry(struct zsa_right_telemetry *out) {
     return i2c_receive(RIGHT_NRF_I2C_ADDRESS, (uint8_t *)out, sizeof(*out), VOYAGER_I2C_TIMEOUT) == I2C_STATUS_SUCCESS;
 }
+
+/* Confirm mailbox on the same slave (twis0.c). Unsupervised like the above. */
+bool voyager_right_nrf_mailbox_write(uint8_t reg, const uint8_t *data, uint16_t len) {
+    return i2c_write_register(RIGHT_NRF_I2C_ADDRESS, reg, data, len, VOYAGER_I2C_TIMEOUT) == I2C_STATUS_SUCCESS;
+}
+
+/* Register byte, repeated start, read. The selection lasts for this read only. */
+bool voyager_right_nrf_mailbox_read(uint8_t reg, uint8_t *out, uint16_t len) {
+    return i2c_read_register(RIGHT_NRF_I2C_ADDRESS, reg, out, len, VOYAGER_I2C_TIMEOUT) == I2C_STATUS_SUCCESS;
+}
+
+/* Left nRF MCUboot entry (MD, P1.08) on PB9 and nRESET on PB8, both active
+ * low, open-drain with the nRF's pull-up, as in ignition's nrf_gpio.c. The
+ * board init leaves them inputs with pull-ups. ODR goes high before the pins
+ * become outputs, so the switch cannot pulse the reset line. */
+#    define LEFT_NRF_MD_PIN B9
+#    define LEFT_NRF_RESET_PIN B8
+#    define LEFT_NRF_RESET_PULSE_US 500
+
+bool zsa_wireless_left_nrf_reset_kb(void) {
+    gpio_write_pin_high(LEFT_NRF_MD_PIN);
+    gpio_write_pin_high(LEFT_NRF_RESET_PIN);
+    gpio_set_pin_output_open_drain(LEFT_NRF_MD_PIN);
+    gpio_set_pin_output_open_drain(LEFT_NRF_RESET_PIN);
+
+    gpio_write_pin_low(LEFT_NRF_RESET_PIN);
+    wait_us(LEFT_NRF_RESET_PULSE_US);
+    gpio_write_pin_high(LEFT_NRF_RESET_PIN);
+    return true;
+}
 #endif
 
 #if defined(DEFERRED_EXEC_ENABLE)
