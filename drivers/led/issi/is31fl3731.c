@@ -293,14 +293,20 @@ void is31fl3731_update_pwm_buffers(uint8_t index) {
     }
 }
 
-void is31fl3731_update_led_control_registers(uint8_t index) {
+// Returns false at the first failed write and leaves the buffer dirty.
+static bool write_led_control_registers(uint8_t index) {
     if (driver_buffers[index].led_control_buffer_dirty) {
         for (uint8_t i = 0; i < IS31FL3731_LED_CONTROL_REGISTER_COUNT; i++) {
-            is31fl3731_write_register(index, i, driver_buffers[index].led_control_buffer[i]);
+            if (is31fl3731_write_register(index, i, driver_buffers[index].led_control_buffer[i]) != I2C_STATUS_SUCCESS) return false;
         }
 
         driver_buffers[index].led_control_buffer_dirty = false;
     }
+    return true;
+}
+
+void is31fl3731_update_led_control_registers(uint8_t index) {
+    write_led_control_registers(index);
 }
 
 bool is31fl3731_resync(uint8_t index) {
@@ -309,7 +315,9 @@ bool is31fl3731_resync(uint8_t index) {
     }
 
     driver_buffers[index].led_control_buffer_dirty = true;
-    is31fl3731_update_led_control_registers(index);
+    if (!write_led_control_registers(index)) {
+        return false;
+    }
 
     driver_buffers[index].pwm_buffer_dirty = true;
     return true;
