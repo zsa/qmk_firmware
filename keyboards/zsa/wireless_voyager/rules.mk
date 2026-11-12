@@ -1,4 +1,4 @@
-MCU_LDSCRIPT = voyager2
+MCU_LDSCRIPT = wireless_voyager
 
 CUSTOM_MATRIX = lite
 PROGRAM_CMD = $(call EXEC_DFU)
