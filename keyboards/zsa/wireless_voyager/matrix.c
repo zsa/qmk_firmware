@@ -1,7 +1,7 @@
 // Copyright 2026 ZSA Technology Labs, Inc <@zsa>
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-#include "voyager_tng.h"
+#include "wireless_voyager.h"
 #include "mcp23018.h"
 #include "i2c_master.h"
 #include "busdev.h"
