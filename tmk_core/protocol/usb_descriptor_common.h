@@ -29,9 +29,13 @@
 //
 // Keep this below the Generic Desktop D-pad usages (0x90 and up). If the range
 // reaches them, hosts like Steam see the D-pad and treat the keyboard as a gamepad.
+//
+// Keep the minimum at 0x01: Windows' HID system-button handling ignores the
+// System Sleep/Power/Wake usages when the array's Logical/Usage Minimum starts
+// at 0x81 (the raw report is identical, only the descriptor range differs).
 
 #ifndef SYSTEM_CONTROL_USAGE_MINIMUM
-#    define SYSTEM_CONTROL_USAGE_MINIMUM 0x0081 // System Power Down
+#    define SYSTEM_CONTROL_USAGE_MINIMUM 0x0001 // Pointer
 #endif
 #ifndef SYSTEM_CONTROL_USAGE_MAXIMUM
 #    define SYSTEM_CONTROL_USAGE_MAXIMUM 0x008F // System Warm Restart
